@@ -24,7 +24,17 @@ class NewPostHandler(Handler):
     def get(self):
         self.render("newpost.html")
 
+    def post(self):
+        subject = self.request.get("subject")
+        content = self.request.get("content")
+
+        if subject and content:
+            self.redirect("/blog/")
+        else:
+            error = "subject and content, please!"
+            self.render("newpost.html", subject=subject, content=content, error=error)
+
 app = webapp2.WSGIApplication([
-    ("/blog", MainPage),
+    ("/blog/?", MainPage),
     ("/blog/newpost", NewPostHandler)
 ], debug=True)
