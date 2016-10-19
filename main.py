@@ -20,6 +20,11 @@ class MainPage(Handler):
     def get(self):
         self.render("base.html")
 
+class NewPostHandler(Handler):
+    def get(self):
+        self.render("newpost.html")
+
 app = webapp2.WSGIApplication([
-    ("/", MainPage),
+    ("/blog", MainPage),
+    ("/blog/newpost", NewPostHandler)
 ], debug=True)
