@@ -34,10 +34,11 @@ class Post(db.Model):
     def render(self):
         self._render_text = self.content.replace('\n', '<br>')
         return self.render_str("post.html", p = self)
-        
+
 class MainPage(Handler):
     def get(self):
-        self.render("base.html")
+        posts = db.GqlQuery("select * from Post order by created desc limit 10")
+        self.render("front.html", posts=posts)
 
 class PostPageHandler(Handler):
     def get(self, post_id):
