@@ -15,6 +15,13 @@ USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
 def valid_username(username):
     return username and USER_RE.match(username)
 
+def usernameIsTaken(username):
+    users = db.GqlQuery("SELECT * FROM User")
+    for u in users:
+        if u.username == username:
+            return True
+    return False
+
 PASS_RE = re.compile(r"^.{3,20}$")
 def valid_password(password):
     return password and PASS_RE.match(password)
@@ -22,6 +29,23 @@ def valid_password(password):
 EMAIL_RE  = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
 def valid_email(email):
     return not email or EMAIL_RE.match(email)
+
+#########################
+# password hashing
+#########################
+def make_salt():
+    return ''.join(random.choice(string.letters) for x in xrange(5))
+
+def make_pw_hash(name, pw, salt = None):
+    if not salt:
+        salt = make_salt()
+
+    h = hashlib.sha256(name + pw + salt).hexdigest()
+    return '%s,%s' % (h, salt)
+
+def valid_pw(name, pw, h):
+    salt = h.split(",")[1]
+    return h == make_pw_hash(name, pw, salt)
 
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
@@ -50,6 +74,11 @@ class Post(db.Model):
     def render(self):
         self._render_text = self.content.replace('\n', '<br>')
         return self.render_str("post.html", p = self)
+
+class User(db.Model):
+    username = db.StringProperty(required = True)
+    password = db.StringProperty(required = True)
+    email = db.EmailProperty(required = False)
 
 class MainPage(Handler):
     def get(self):
@@ -98,6 +127,9 @@ class UserSignUpHandler(Handler):
 
         if not valid_username(username):
             params['error_username'] = "That's not a valid username."
+            have_error = True
+        elif usernameIsTaken(username):
+            params['error_username'] = "This user name is taken."
             have_error = True
 
         if not valid_password(password):
