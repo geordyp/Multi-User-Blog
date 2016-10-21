@@ -39,8 +39,8 @@ def valid_email(email):
 #########################
 # password hashing
 #########################
-def make_salt():
-    return ''.join(random.choice(string.letters) for x in xrange(5))
+def make_salt(length = 5):
+    return ''.join(random.choice(string.letters) for x in xrange(length))
 
 def make_pw_hash(name, pw, salt = None):
     if not salt:
@@ -85,6 +85,9 @@ class Handler(webapp2.RequestHandler):
         cookie_val = self.request.cookies.get(name)
         return cookie_val and check_secure_val(cookie_val)
 
+    def login(self, user):
+        self.set_secure_cookie('user_id', str(user.key().id()))
+
     def initialize(self, *a, **kw):
         webapp2.RequestHandler.initialize(self, *a, **kw)
         uid = self.read_secure_cookie("user_id")
@@ -120,12 +123,23 @@ class User(db.Model):
         return User.get_by_id(uid, parent = users_key())
 
     @classmethod
+    def by_name(cls, name):
+        u = User.all().filter('username =', name).get()
+        return u
+
+    @classmethod
     def register(cls, username, password, email = None):
         pw_hash = make_pw_hash(username, password)
         return User(parent = users_key(),
                     username = username,
                     password = pw_hash,
                     email = email)
+
+    @classmethod
+    def login(cls, username, password):
+        u = cls.by_name(username)
+        if u and valid_pw(username, password, u.password):
+            return u
 
 class MainPage(Handler):
     def get(self):
@@ -158,6 +172,22 @@ class NewPostHandler(Handler):
         else:
             error = "subject and content, please!"
             self.render("newpost.html", subject=subject, content=content, error=error)
+
+class UserLoginHandler(Handler):
+    def get(self):
+        self.render("login.html")
+
+    def post(self):
+        username = self.request.get("username")
+        password = self.request.get("password")
+
+        u = User.login(str(username), str(password))
+        if u:
+            self.login(u)
+            self.redirect('/blog/welcome')
+        else:
+            error = "Invalid login"
+            self.render("login.html", error=error)
 
 class UserSignUpHandler(Handler):
     def get(self):
@@ -201,9 +231,10 @@ class UserSignUpHandler(Handler):
 
 class WelcomeHandler(Handler):
     def get(self):
-        username = self.read_secure_cookie("username")
-        if valid_username(username):
-            self.render("welcome.html", username = str(username))
+        u_id = self.read_secure_cookie("user_id")
+        user = User.by_id(int(u_id))
+        if valid_username(str(user.username)):
+            self.render("welcome.html", username = str(user.username))
         else:
             self.redirect("/blog")
 
@@ -212,5 +243,6 @@ app = webapp2.WSGIApplication([
     ("/blog/newpost", NewPostHandler),
     ("/blog/([0-9]+)", PostPageHandler),
     ("/blog/signup", UserSignUpHandler),
+    ("/blog/login", UserLoginHandler),
     ("/blog/welcome", WelcomeHandler)
 ], debug=True)
