@@ -240,11 +240,15 @@ class LogoutHandler(Handler):
 class WelcomeHandler(Handler):
     def get(self):
         u_id = self.read_secure_cookie("user_id")
-        user = User.by_id(int(u_id))
-        if user and valid_username(str(user.username)):
-            self.render("welcome.html", username = str(user.username))
+        if u_id:
+            user = User.by_id(int(u_id))
+            if user and valid_username(str(user.username)):
+                self.render("welcome.html", username = str(user.username))
+            else:
+                self.redirect("/blog")
         else:
-            self.redirect("/blog")
+            name = self.read_secure_cookie("username")
+            self.render("welcome.html", username = str(name))
 
 app = webapp2.WSGIApplication([
     ("/blog/?", MainPage),
