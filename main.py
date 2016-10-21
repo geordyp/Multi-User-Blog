@@ -1,12 +1,18 @@
 import os
 import re
+import string
+import random
 import jinja2
 import webapp2
+import hashlib
+import hmac
 
 from google.appengine.ext import db
 
 template_dir = os.path.join(os.path.dirname(__file__), "html")
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape = True)
+
+secret = 'iliketurtles'
 
 #########################
 # user sign up validation
@@ -47,6 +53,17 @@ def valid_pw(name, pw, h):
     salt = h.split(",")[1]
     return h == make_pw_hash(name, pw, salt)
 
+#########################
+# cookies
+#########################
+def make_secure_val(val):
+    return "%s|%s" % (val, hmac.new(secret, val).hexdigest())
+
+def check_secure_val(secure_val):
+    val = secure_val.split("|")[0]
+    if secure_val == make_secure_val(val):
+        return val
+
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
@@ -57,6 +74,21 @@ class Handler(webapp2.RequestHandler):
 
     def render(self, template, **kw):
         self.write(self.render_str(template, **kw))
+
+    def set_secure_cookie(self, name, val):
+        cookie_val = make_secure_val(val)
+        self.response.headers.add_header(
+            "Set-Cookie",
+            "%s=%s; Path=/" % (name, cookie_val))
+
+    def read_secure_cookie(self, name):
+        cookie_val = self.request.cookies.get(name)
+        return cookie_val and check_secure_val(cookie_val)
+
+    def initialize(self, *a, **kw):
+        webapp2.RequestHandler.initialize(self, *a, **kw)
+        uid = self.read_secure_cookie("user_id")
+        self.user = uid and User.by_id(int(uid))
 
 def blog_key(name = 'default'):
     return db.Key.from_path('blogs', name)
@@ -75,10 +107,25 @@ class Post(db.Model):
         self._render_text = self.content.replace('\n', '<br>')
         return self.render_str("post.html", p = self)
 
+def users_key(group = 'default'):
+    return db.Key.from_path('users', group)
+
 class User(db.Model):
     username = db.StringProperty(required = True)
     password = db.StringProperty(required = True)
-    email = db.EmailProperty(required = False)
+    email = db.StringProperty(required = False)
+
+    @classmethod
+    def by_id(cls, uid):
+        return User.get_by_id(uid, parent = users_key())
+
+    @classmethod
+    def register(cls, username, password, email = None):
+        pw_hash = make_pw_hash(username, password)
+        return User(parent = users_key(),
+                    username = username,
+                    password = pw_hash,
+                    email = email)
 
 class MainPage(Handler):
     def get(self):
@@ -146,20 +193,24 @@ class UserSignUpHandler(Handler):
         if have_error:
             self.render('signup.html', **params)
         else:
-            self.redirect("/welcome?username=" + username)
+            u = User.register(str(username), str(password), str(email))
+            u.put()
+
+            self.set_secure_cookie("username", u.username)
+            self.redirect("/blog/welcome")
 
 class WelcomeHandler(Handler):
     def get(self):
-        username = self.request.get("username")
+        username = self.read_secure_cookie("username")
         if valid_username(username):
-            self.render("welcome.html", username = username)
+            self.render("welcome.html", username = str(username))
         else:
-            self.redirect("/")
+            self.redirect("/blog")
 
 app = webapp2.WSGIApplication([
     ("/blog/?", MainPage),
     ("/blog/newpost", NewPostHandler),
     ("/blog/([0-9]+)", PostPageHandler),
     ("/blog/signup", UserSignUpHandler),
-    ("/welcome", WelcomeHandler)
+    ("/blog/welcome", WelcomeHandler)
 ], debug=True)
