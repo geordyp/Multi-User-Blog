@@ -88,6 +88,9 @@ class Handler(webapp2.RequestHandler):
     def login(self, user):
         self.set_secure_cookie('user_id', str(user.key().id()))
 
+    def logout(self):
+        self.response.headers.add_header('Set-Cookie', 'user_id=; Path=/')
+
     def initialize(self, *a, **kw):
         webapp2.RequestHandler.initialize(self, *a, **kw)
         uid = self.read_secure_cookie("user_id")
@@ -229,11 +232,16 @@ class UserSignUpHandler(Handler):
             self.set_secure_cookie("username", u.username)
             self.redirect("/blog/welcome")
 
+class LogoutHandler(Handler):
+    def get(self):
+        self.logout()
+        self.redirect('/blog/signup')
+
 class WelcomeHandler(Handler):
     def get(self):
         u_id = self.read_secure_cookie("user_id")
         user = User.by_id(int(u_id))
-        if valid_username(str(user.username)):
+        if user and valid_username(str(user.username)):
             self.render("welcome.html", username = str(user.username))
         else:
             self.redirect("/blog")
@@ -244,5 +252,6 @@ app = webapp2.WSGIApplication([
     ("/blog/([0-9]+)", PostPageHandler),
     ("/blog/signup", UserSignUpHandler),
     ("/blog/login", UserLoginHandler),
-    ("/blog/welcome", WelcomeHandler)
+    ("/blog/welcome", WelcomeHandler),
+    ("/blog/logout", LogoutHandler)
 ], debug=True)
