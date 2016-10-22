@@ -301,16 +301,33 @@ class DeleteHandler(Handler):
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
         post = db.get(key)
 
-        if post.created_by == self.user:
-            post.delete()
-            msg = "Your post has been successfully deleted."
+        if not self.user:
+            msg = "You need to login to delete a post."
         else:
-            if not self.user:
-                msg = "You need to login to delete a post."
+            if post.created_by.username == self.user.username:
+                post.delete()
+                msg = "Your post has been successfully deleted."
+                self.render('confirmation.html', msg=msg, user=self.user)
             else:
                 msg = "You didn't create this post. You can't delete it."
+                self.render("permalink.html", post=post, post_id=post_id, error=msg, user=self.user)
 
-        self.render('confirmation.html', msg=msg, user=self.user)
+class EditHandler(Handler):
+    def get(self):
+        post_id = self.request.get("post_id")
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+
+        if not self.user:
+            msg = "You need to login to edit this post."
+        else:
+            if post.created_by.username == self.user.username:
+                # THE USER CAN EDIT
+                msg = "You CAN edit this post."
+            else:
+                msg = "You didn't create this post. You can't edit it."
+
+        self.render("permalink.html", post=post, post_id=post_id, error=msg, user=self.user)
 
 app = webapp2.WSGIApplication([
     ("/blog/?", MainPage),
@@ -321,5 +338,6 @@ app = webapp2.WSGIApplication([
     ("/blog/welcome", WelcomeHandler),
     ("/blog/logout", LogoutHandler),
     ("/blog/like", LikeHandler),
-    ("/blog/delete", DeleteHandler)
+    ("/blog/delete", DeleteHandler),
+    ("/blog/edit", EditHandler)
 ], debug=True)
