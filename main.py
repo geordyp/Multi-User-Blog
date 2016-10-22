@@ -39,6 +39,12 @@ def valid_email(email):
 def blog_key(name = 'default'):
     return db.Key.from_path('blogs', name)
 
+def users_key(group = 'default'):
+    return db.Key.from_path('users', group)
+
+def likes_key(group = 'default'):
+    return db.Key.from_path('likes', group)
+
 class User(db.Model):
     username = db.StringProperty(required = True)
     password = db.StringProperty(required = True)
@@ -72,7 +78,7 @@ class Post(db.Model):
     content = db.TextProperty(required = True)
     created = db.DateTimeProperty(auto_now_add = True)
     last_modified = db.DateTimeProperty(auto_now = True)
-    created_by = db.ReferenceProperty(User, required = False)
+    created_by = db.ReferenceProperty(User, required = True)
 
     def render_str(self, template, **params):
         t = jinja_env.get_template(template)
@@ -82,12 +88,17 @@ class Post(db.Model):
         self._render_text = self.content.replace('\n', '<br>')
         return self.render_str("post.html", p = self)
 
-def users_key(group = 'default'):
-    return db.Key.from_path('users', group)
+class UserLike(db.Model):
+    post_id = db.StringProperty(required = True)
+    username = db.StringProperty(required = True)
 
-class Like(db.Model):
-    post = db.ReferenceProperty(Post, required = True, collection_name = "likes")
-    user = db.ReferenceProperty(User, required = True, collection_name = "likes")
+    @classmethod
+    def getLikeByPost(cls, post_id, username):
+        likes = db.GqlQuery("SELECT * FROM UserLike WHERE post_id = :1", str(post_id))
+        if likes:
+            for like in likes:
+                if like.username == username:
+                    return like
 
 #########################
 # password hashing
@@ -163,17 +174,12 @@ class PostPageHandler(Handler):
             self.error(404)
             return
 
-        # likes = post.likes.get()
-        # num = 0
-        # userLike = False
-        # if likes:
-        #     for like in likes:
-        #         num = num + 1
-        #         if like.user == self.user:
-        #             userLike = True
+        msg = None
+        liked = False
+        if self.user and UserLike.getLikeByPost(post_id, self.user.username):
+            liked = True
 
-        # self.render("permalink.html", post=post, post_id=post_id, userLike=userLike, num=num)
-        self.render("permalink.html", post=post, post_id=post_id, user=self.user)
+        self.render("permalink.html", post=post, post_id=post_id, liked=liked, error=msg, user=self.user)
 
 class NewPostHandler(Handler):
     def get(self):
@@ -274,26 +280,25 @@ class LikeHandler(Handler):
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
         post = db.get(key)
 
-        if post.created_by == self.user:
-            # TODO error message: can't like this post
-            True
-        else:
-            likes = post.likes.get()
-            userHasLiked = False
-            # if likes:
-            #     for like in likes:
-            #         if like.user == self.user:
-            #             # this user has already liked this post, so unlike
-            #             like.key.delete()
-            #             userHasLiked = True
-            #     if (userHasLiked == False):
-            #         l = Like(post=post, user=self.user)
-            #         l.put()
-            # else:
-            l = Like(post=post, user=self.user)
-            l.put()
+        msg = None
+        liked = None
 
-        self.redirect("/blog/%s" % str(post_id))
+        if not self.user:
+            msg = "You need to login to like this post."
+        else:
+            if post.created_by.username == self.user.username:
+                msg = "You can't like your own post."
+            else:
+                like = UserLike.getLikeByPost(post_id, self.user.username)
+                if like:
+                    like.delete()
+                    liked = False
+                else:
+                    like = UserLike(parent = likes_key(), post_id=post_id, username=self.user.username)
+                    like.put()
+                    liked = True
+
+        self.render("permalink.html", post=post, post_id=post_id, liked=liked, error=msg, user=self.user)
 
 class DeleteHandler(Handler):
     def get(self):
@@ -303,6 +308,7 @@ class DeleteHandler(Handler):
 
         if not self.user:
             msg = "You need to login to delete a post."
+            self.render("permalink.html", post=post, post_id=post_id, liked=None, error=msg, user=self.user)
         else:
             if post.created_by.username == self.user.username:
                 post.delete()
@@ -310,7 +316,11 @@ class DeleteHandler(Handler):
                 self.render('confirmation.html', msg=msg, user=self.user)
             else:
                 msg = "You didn't create this post. You can't delete it."
-                self.render("permalink.html", post=post, post_id=post_id, error=msg, user=self.user)
+                liked = False
+                if UserLike.getLikeByPost(post_id, self.user.username):
+                    liked = True
+
+                self.render("permalink.html", post=post, post_id=post_id, liked=liked, error=msg, user=self.user)
 
 class EditHandler(Handler):
     def get(self):
@@ -320,13 +330,19 @@ class EditHandler(Handler):
 
         if not self.user:
             msg = "You need to login to edit this post."
-            self.render("permalink.html", post=post, post_id=post_id, error=msg, user=self.user)
+            self.render("permalink.html", post=post, post_id=post_id, liked=None, error=msg, user=self.user)
         else:
             if post.created_by.username == self.user.username:
                 self.render("editpost.html", post_id=post_id, subject=post.subject, content=post.content, user=self.user)
             else:
                 msg = "You didn't create this post. You can't edit it."
-                self.render("permalink.html", post=post, post_id=post_id, error=msg, user=self.user)
+
+            liked = False
+            if self.user and UserLike.getLikeByPost(post_id, self.user.username):
+                liked = True
+
+            self.render("permalink.html", post=post, post_id=post_id, liked=liked, error=msg, user=self.user)
+
 
     def post(self):
         subject = self.request.get("subject")
