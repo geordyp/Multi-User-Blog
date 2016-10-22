@@ -320,14 +320,30 @@ class EditHandler(Handler):
 
         if not self.user:
             msg = "You need to login to edit this post."
+            self.render("permalink.html", post=post, post_id=post_id, error=msg, user=self.user)
         else:
             if post.created_by.username == self.user.username:
-                # THE USER CAN EDIT
-                msg = "You CAN edit this post."
+                self.render("editpost.html", post_id=post_id, subject=post.subject, content=post.content, user=self.user)
             else:
                 msg = "You didn't create this post. You can't edit it."
+                self.render("permalink.html", post=post, post_id=post_id, error=msg, user=self.user)
 
-        self.render("permalink.html", post=post, post_id=post_id, error=msg, user=self.user)
+    def post(self):
+        subject = self.request.get("subject")
+        content = self.request.get("content")
+        post_id = self.request.get("post_id")
+
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+
+        if subject and content:
+            post.subject = subject
+            post.content = content
+            post.put()
+            self.redirect('/blog/%s' % str(post_id))
+        else:
+            error = "subject and content, please!"
+            self.render("editpost.html", post_id=post_id, subject=post.subject, content=post.content, user=self.user)
 
 app = webapp2.WSGIApplication([
     ("/blog/?", MainPage),

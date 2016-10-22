@@ -8,14 +8,6 @@
   {% if userLike %}👍{% endif %} -->
 
   <a href="/blog/delete?post_id={{post_id}}">Delete</a>
-
-  <!-- <button onclick="onDelete()">Delete</button>
-  <script>
-  function onDelete() {
-      var confirmation = confirm("Are you sure you want to delete this post?");
-      if (confirmation == true) {
-          window.location = "/blog/delete?post_id={{post_id}}";
-      }
-  }
-  </script> -->
+  <a href="/blog/edit?post_id={{post_id}}">Edit</a>
+  {{error}}
 {% endblock %}
