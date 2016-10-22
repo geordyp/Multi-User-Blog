@@ -36,6 +36,59 @@ EMAIL_RE  = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
 def valid_email(email):
     return not email or EMAIL_RE.match(email)
 
+def blog_key(name = 'default'):
+    return db.Key.from_path('blogs', name)
+
+class User(db.Model):
+    username = db.StringProperty(required = True)
+    password = db.StringProperty(required = True)
+    email = db.StringProperty(required = False)
+
+    @classmethod
+    def by_id(cls, uid):
+        return cls.get_by_id(uid, parent = users_key())
+
+    @classmethod
+    def by_name(cls, name):
+        u = cls.all().filter('username =', name).get()
+        return u
+
+    @classmethod
+    def register(cls, username, password, email = None):
+        pw_hash = make_pw_hash(username, password)
+        return cls(parent = users_key(),
+                    username = username,
+                    password = pw_hash,
+                    email = email)
+
+    @classmethod
+    def login(cls, username, password):
+        u = cls.by_name(username)
+        if u and valid_pw(username, password, u.password):
+            return u
+
+class Post(db.Model):
+    subject = db.StringProperty(required = True)
+    content = db.TextProperty(required = True)
+    created = db.DateTimeProperty(auto_now_add = True)
+    last_modified = db.DateTimeProperty(auto_now = True)
+    created_by = db.ReferenceProperty(User, required = False, collection_name = "posts")
+
+    def render_str(self, template, **params):
+        t = jinja_env.get_template(template)
+        return t.render(params)
+
+    def render(self):
+        self._render_text = self.content.replace('\n', '<br>')
+        return self.render_str("post.html", p = self)
+
+def users_key(group = 'default'):
+    return db.Key.from_path('users', group)
+
+class Like(db.Model):
+    post = db.ReferenceProperty(Post, required = True, collection_name = "likes")
+    user = db.ReferenceProperty(User, required = True, collection_name = "likes")
+
 #########################
 # password hashing
 #########################
@@ -96,54 +149,6 @@ class Handler(webapp2.RequestHandler):
         uid = self.read_secure_cookie("user_id")
         self.user = uid and User.by_id(int(uid))
 
-def blog_key(name = 'default'):
-    return db.Key.from_path('blogs', name)
-
-class Post(db.Model):
-    subject = db.StringProperty(required = True)
-    content = db.TextProperty(required = True)
-    created = db.DateTimeProperty(auto_now_add = True)
-    last_modified = db.DateTimeProperty(auto_now = True)
-
-    def render_str(self, template, **params):
-        t = jinja_env.get_template(template)
-        return t.render(params)
-
-    def render(self):
-        self._render_text = self.content.replace('\n', '<br>')
-        return self.render_str("post.html", p = self)
-
-def users_key(group = 'default'):
-    return db.Key.from_path('users', group)
-
-class User(db.Model):
-    username = db.StringProperty(required = True)
-    password = db.StringProperty(required = True)
-    email = db.StringProperty(required = False)
-
-    @classmethod
-    def by_id(cls, uid):
-        return User.get_by_id(uid, parent = users_key())
-
-    @classmethod
-    def by_name(cls, name):
-        u = User.all().filter('username =', name).get()
-        return u
-
-    @classmethod
-    def register(cls, username, password, email = None):
-        pw_hash = make_pw_hash(username, password)
-        return User(parent = users_key(),
-                    username = username,
-                    password = pw_hash,
-                    email = email)
-
-    @classmethod
-    def login(cls, username, password):
-        u = cls.by_name(username)
-        if u and valid_pw(username, password, u.password):
-            return u
-
 class MainPage(Handler):
     def get(self):
         posts = db.GqlQuery("select * from Post order by created desc limit 10")
@@ -158,7 +163,17 @@ class PostPageHandler(Handler):
             self.error(404)
             return
 
-        self.render("permalink.html", post=post)
+        # likes = post.likes.get()
+        # num = 0
+        # userLike = False
+        # if likes:
+        #     for like in likes:
+        #         num = num + 1
+        #         if like.user == self.user:
+        #             userLike = True
+
+        # self.render("permalink.html", post=post, post_id=post_id, userLike=userLike, num=num)
+        self.render("permalink.html", post=post, post_id=post_id)
 
 class NewPostHandler(Handler):
     def get(self):
@@ -169,7 +184,7 @@ class NewPostHandler(Handler):
         content = self.request.get("content")
 
         if subject and content:
-            p = Post(parent = blog_key(), subject=subject, content=content)
+            p = Post(parent = blog_key(), subject=subject, content=content, created_by=self.user)
             p.put()
             self.redirect('/blog/%s' % str(p.key().id()))
         else:
@@ -250,6 +265,43 @@ class WelcomeHandler(Handler):
             name = self.read_secure_cookie("username")
             self.render("welcome.html", username = str(name))
 
+class LikeHandler(Handler):
+    def get(self):
+        post_id = self.request.get("post_id")
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+
+        if post.created_by == self.user:
+            # TODO error message: can't like this post
+            True
+        else:
+            likes = post.likes.get()
+            userHasLiked = False
+            # if likes:
+            #     for like in likes:
+            #         if like.user == self.user:
+            #             # this user has already liked this post, so unlike
+            #             like.key.delete()
+            #             userHasLiked = True
+            #     if (userHasLiked == False):
+            #         l = Like(post=post, user=self.user)
+            #         l.put()
+            # else:
+            l = Like(post=post, user=self.user)
+            l.put()
+
+        self.redirect("/blog/%s" % str(post_id))
+
+class DeleteHandler(Handler):
+    def get(self):
+        post_id = self.request.get("post_id")
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+        post.delete()
+
+        msg = "Your post has been successfully deleted."
+        self.render('confirmation.html', msg=msg)
+
 app = webapp2.WSGIApplication([
     ("/blog/?", MainPage),
     ("/blog/newpost", NewPostHandler),
@@ -257,5 +309,7 @@ app = webapp2.WSGIApplication([
     ("/blog/signup", UserSignUpHandler),
     ("/blog/login", UserLoginHandler),
     ("/blog/welcome", WelcomeHandler),
-    ("/blog/logout", LogoutHandler)
+    ("/blog/logout", LogoutHandler),
+    ("/blog/like", LikeHandler),
+    ("/blog/delete", DeleteHandler)
 ], debug=True)
