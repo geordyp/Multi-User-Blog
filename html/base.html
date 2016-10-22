@@ -7,6 +7,11 @@
   <body>
 
   <body>
+    {% if user %}
+      <p>Howdy, {{user.username}} | <a href="/blog/logout">logout</a></p>
+    {% else %}
+      <a href="/blog/login">login</p>
+    {% endif %}
     <h1><a href="/blog">BLOG</a></h1>
 
     {% block content %}

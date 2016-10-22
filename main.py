@@ -152,7 +152,7 @@ class Handler(webapp2.RequestHandler):
 class MainPage(Handler):
     def get(self):
         posts = db.GqlQuery("select * from Post order by created desc limit 10")
-        self.render("front.html", posts=posts)
+        self.render("front.html", posts=posts, user=self.user)
 
 class PostPageHandler(Handler):
     def get(self, post_id):
@@ -173,11 +173,11 @@ class PostPageHandler(Handler):
         #             userLike = True
 
         # self.render("permalink.html", post=post, post_id=post_id, userLike=userLike, num=num)
-        self.render("permalink.html", post=post, post_id=post_id)
+        self.render("permalink.html", post=post, post_id=post_id, user=self.user)
 
 class NewPostHandler(Handler):
     def get(self):
-        self.render("newpost.html")
+        self.render("newpost.html", user=self.user)
 
     def post(self):
         subject = self.request.get("subject")
@@ -192,11 +192,11 @@ class NewPostHandler(Handler):
                 error = "please login to create a post"
             else:
                 error = "subject and content, please!"
-            self.render("newpost.html", subject=subject, content=content, error=error)
+            self.render("newpost.html", subject=subject, content=content, error=error, user=self.user)
 
 class UserLoginHandler(Handler):
     def get(self):
-        self.render("login.html")
+        self.render("login.html", user=self.user)
 
     def post(self):
         username = self.request.get("username")
@@ -208,11 +208,11 @@ class UserLoginHandler(Handler):
             self.redirect('/blog/welcome')
         else:
             error = "Invalid login"
-            self.render("login.html", error=error)
+            self.render("login.html", error=error, user=self.user)
 
 class UserSignUpHandler(Handler):
     def get(self):
-        self.render("signup.html")
+        self.render("signup.html", user=self.user)
 
     def post(self):
         have_error = False
@@ -253,7 +253,7 @@ class UserSignUpHandler(Handler):
 class LogoutHandler(Handler):
     def get(self):
         self.logout()
-        self.redirect('/blog/signup')
+        self.redirect('/blog/login')
 
 class WelcomeHandler(Handler):
     def get(self):
@@ -261,12 +261,12 @@ class WelcomeHandler(Handler):
         if u_id:
             user = User.by_id(int(u_id))
             if user and valid_username(str(user.username)):
-                self.render("welcome.html", username = str(user.username))
+                self.render("welcome.html", username = str(user.username), user=self.user)
             else:
                 self.redirect("/blog")
         else:
             name = self.read_secure_cookie("username")
-            self.render("welcome.html", username = str(name))
+            self.render("welcome.html", username = str(name), user=self.user)
 
 class LikeHandler(Handler):
     def get(self):
@@ -310,7 +310,7 @@ class DeleteHandler(Handler):
             else:
                 msg = "You didn't create this post. You can't delete it."
 
-        self.render('confirmation.html', msg=msg)
+        self.render('confirmation.html', msg=msg, user=self.user)
 
 app = webapp2.WSGIApplication([
     ("/blog/?", MainPage),
