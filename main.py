@@ -300,9 +300,16 @@ class DeleteHandler(Handler):
         post_id = self.request.get("post_id")
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
         post = db.get(key)
-        post.delete()
 
-        msg = "Your post has been successfully deleted."
+        if post.created_by == self.user:
+            post.delete()
+            msg = "Your post has been successfully deleted."
+        else:
+            if not self.user:
+                msg = "You need to login to delete a post."
+            else:
+                msg = "You didn't create this post. You can't delete it."
+
         self.render('confirmation.html', msg=msg)
 
 app = webapp2.WSGIApplication([
