@@ -72,7 +72,7 @@ class Post(db.Model):
     content = db.TextProperty(required = True)
     created = db.DateTimeProperty(auto_now_add = True)
     last_modified = db.DateTimeProperty(auto_now = True)
-    created_by = db.ReferenceProperty(User, required = False, collection_name = "posts")
+    created_by = db.ReferenceProperty(User, required = False)
 
     def render_str(self, template, **params):
         t = jinja_env.get_template(template)
@@ -183,12 +183,15 @@ class NewPostHandler(Handler):
         subject = self.request.get("subject")
         content = self.request.get("content")
 
-        if subject and content:
+        if subject and content and self.user:
             p = Post(parent = blog_key(), subject=subject, content=content, created_by=self.user)
             p.put()
             self.redirect('/blog/%s' % str(p.key().id()))
         else:
-            error = "subject and content, please!"
+            if not self.user:
+                error = "please login to create a post"
+            else:
+                error = "subject and content, please!"
             self.render("newpost.html", subject=subject, content=content, error=error)
 
 class UserLoginHandler(Handler):
