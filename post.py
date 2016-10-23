@@ -2,6 +2,7 @@ from util import render_str
 
 from google.appengine.ext import db
 
+
 class Post(db.Model):
     """Data model for blog posts
 
@@ -28,6 +29,7 @@ class Post(db.Model):
         self._render_text = self.content.replace("\n", "<br>")
         return render_str("post.html", p=self)
 
+
 def blog_key(name="default"):
     """Groups Post entities under parent, "default"
 
@@ -38,6 +40,7 @@ def blog_key(name="default"):
         The key for data model Post
     """
     return db.Key.from_path("blogs", name)
+
 
 class UserLike(db.Model):
     """Data model for a User's Like
@@ -61,7 +64,9 @@ class UserLike(db.Model):
         Returns:
             The UserLike entity with the given username and post ID
         """
-        return cls.all().filter("post_id =", post_id).filter("username =", username).get()
+        return cls.all().filter("post_id =", post_id)\
+            .filter("username =", username).get()
+
 
 def likes_key(group="default"):
     """Groups UserLike entities under parent, "default"
@@ -73,6 +78,7 @@ def likes_key(group="default"):
         The key for data model UserLike
     """
     return db.Key.from_path("likes", group)
+
 
 class Comment(db.Model):
     """Data model for blog comments
@@ -111,6 +117,7 @@ class Comment(db.Model):
             The comments from the post with the given ID
         """
         return cls.all().filter("post_id =", str(post_id))
+
 
 def comments_key(group="default"):
     """Groups Comment entities under parent, "default"
