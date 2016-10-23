@@ -42,6 +42,52 @@ class FrontPage(BlogHandler):
         posts = Post.all().order("-created")
         self.render("front.html", posts=posts, user=self.user)
 
+class SignUp(BlogHandler):
+    """Sign up page where users can create an account"""
+    def get(self):
+        self.render("signup.html", user=self.user)
+
+    def post(self):
+        username = self.request.get("username")
+        password = self.request.get("password")
+        verify = self.request.get("verify")
+        email = self.request.get("email")
+
+        have_error = False
+        params = dict(username = username, email = email)
+
+        # check username
+        if not is_valid_username(username):
+            params['error_username'] = "This isn't a valid username."
+            have_error = True
+        elif User.by_name(username):
+            params['error_username'] = "This username is taken."
+            have_error = True
+
+        # check password
+        if not is_valid_password(password):
+            params['error_password'] = "This isn't a valid password."
+            have_error = True
+        elif password != verify:
+            params['error_verify'] = "Your passwords didn't match."
+            have_error = True
+
+        # check email
+        if not is_valid_email(email):
+            params['error_email'] = "This isn't a valid email."
+            have_error = True
+
+        if have_error:
+            # there was an error, reload signup.html with errors
+            self.render('signup.html', **params)
+        else:
+            # register user
+            u = User.register(str(username), str(password), str(email))
+            u.put()
+
+            self.set_secure_cookie("username", u.username)
+            self.redirect("/blog/welcome")
+
 class SinglePost(BlogHandler):
     """Displays a single blog post"""
     def get(self, post_id):
@@ -92,49 +138,6 @@ class UserLoginHandler(BlogHandler):
         else:
             error = "Invalid login"
             self.render("login.html", error=error, user=self.user)
-
-class UserSignUpHandler(BlogHandler):
-    def get(self):
-        self.render("signup.html", user=self.user)
-
-    def post(self):
-        have_error = False
-        username = self.request.get("username")
-        password = self.request.get("password")
-        verify = self.request.get("verify")
-        email = self.request.get("email")
-
-        params = dict(username = username, email = email)
-
-        if not is_valid_username(username):
-            params['error_username'] = "That's not a valid username."
-            have_error = True
-        # elif usernameIsTaken(username):
-        #     params['error_username'] = "This user name is taken."
-        #     have_error = True
-        elif User.by_name(username):
-            params['error_username'] = "This user name is taken."
-            have_error = True
-
-        if not is_valid_password(password):
-            params['error_password'] = "That wasn't a valid password."
-            have_error = True
-        elif password != verify:
-            params['error_verify'] = "Your passwords didn't match."
-            have_error = True
-
-        if not is_valid_email(email):
-            params['error_email'] = "That's not a valid email."
-            have_error = True
-
-        if have_error:
-            self.render('signup.html', **params)
-        else:
-            u = User.register(str(username), str(password), str(email))
-            u.put()
-
-            self.set_secure_cookie("username", u.username)
-            self.redirect("/blog/welcome")
 
 class LogoutHandler(BlogHandler):
     def get(self):
@@ -371,15 +374,15 @@ class DeleteCommentHandler(BlogHandler):
                             user=self.user)
 
 app = webapp2.WSGIApplication([("/blog/?", FrontPage),
-                               ("/blog/([0-9]+)", SinglePost),
-                               ("/blog/newpost", NewPostHandler),
-                               ("/blog/signup", UserSignUpHandler),
+                               ("/blog/signup", SignUp),
                                ("/blog/login", UserLoginHandler),
                                ("/blog/welcome", WelcomeHandler),
                                ("/blog/logout", LogoutHandler),
-                               ("/blog/like", LikeHandler),
+                               ("/blog/([0-9]+)", SinglePost),
+                               ("/blog/newpost", NewPostHandler),
                                ("/blog/delete", DeleteHandler),
                                ("/blog/edit", EditHandler),
+                               ("/blog/like", LikeHandler),
                                ("/blog/newcomment", NewCommentHandler),
                                ("/blog/comment/edit", EditCommentHandler),
                                ("/blog/comment/delete", DeleteCommentHandler)], debug=True)
