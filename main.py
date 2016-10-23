@@ -154,6 +154,31 @@ class NewPost(BlogHandler):
                 error = "Please include Subject and Content."
             self.render("newpost.html", subject=subject, content=content, error=error, user=self.user)
 
+class DeletePost(BlogHandler):
+    """Delete a blog post"""
+    def get(self):
+        post_id = self.request.get("post_id")
+        post_key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(post_key)
+
+        if not self.user:
+            msg = "You need to login to delete this post."
+        else:
+            if post.created_by == self.user.username:
+                post.delete()
+                msg = "Your post has been successfully deleted."
+                self.render('confirmation.html', msg=msg, user=self.user)
+                return
+            else:
+                msg = "You can't delete this post because you didn't create it."
+
+        self.render("permalink.html",
+                    post=post,
+                    liked=self.user and UserLike.by_post_id_username(str(post_id), str(self.user.username)),
+                    comments=Comment.by_post_id(str(post_id)),
+                    error=msg,
+                    user=self.user)
+
 class LikeHandler(BlogHandler):
     def get(self):
         post_id = self.request.get("post_id")
@@ -185,40 +210,6 @@ class LikeHandler(BlogHandler):
                     error=msg,
                     comments=Comment.by_post_id(post_id),
                     user=self.user)
-
-class DeleteHandler(BlogHandler):
-    def get(self):
-        post_id = self.request.get("post_id")
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
-
-        if not self.user:
-            msg = "You need to login to delete a post."
-            self.render("permalink.html",
-                        post=post,
-                        post_id=post_id,
-                        liked=None,
-                        error=msg,
-                        comments=Comment.by_post_id(post_id),
-                        user=self.user)
-        else:
-            if post.created_by.username == self.user.username:
-                post.delete()
-                msg = "Your post has been successfully deleted."
-                self.render('confirmation.html', msg=msg, user=self.user)
-            else:
-                msg = "You didn't create this post. You can't delete it."
-                liked = False
-                if UserLike.by_post_id_username(post_id, self.user.username):
-                    liked = True
-
-                self.render("permalink.html",
-                            post=post,
-                            post_id=post_id,
-                            liked=liked,
-                            error=msg,
-                            comments=Comment.by_post_id(post_id),
-                            user=self.user)
 
 class EditHandler(BlogHandler):
     def get(self):
@@ -377,7 +368,7 @@ app = webapp2.WSGIApplication([("/blog/?", FrontPage),
                                ("/blog/logout", Logout),
                                ("/blog/([0-9]+)", SinglePost),
                                ("/blog/newpost", NewPost),
-                               ("/blog/delete", DeleteHandler),
+                               ("/blog/delete", DeletePost),
                                ("/blog/edit", EditHandler),
                                ("/blog/like", LikeHandler),
                                ("/blog/newcomment", NewCommentHandler),
