@@ -78,15 +78,33 @@ class SignUp(BlogHandler):
             have_error = True
 
         if have_error:
-            # there was an error, reload signup.html with errors
+            # there was an error, re-render signup.html with errors
             self.render('signup.html', **params)
         else:
-            # register user
+            # there was no error, register user
             u = User.register(str(username), str(password), str(email))
             u.put()
 
             self.set_secure_cookie("username", u.username)
             self.redirect("/blog/welcome")
+
+class Login(BlogHandler):
+    """Login page where users can login into their account"""
+    def get(self):
+        self.render("login.html", user=self.user)
+
+    def post(self):
+        username = self.request.get("username")
+        password = self.request.get("password")
+
+        # check if credentials are valid
+        u = User.is_valid_login(str(username), str(password))
+        if u:
+            self.login(u)
+            self.redirect('/blog/welcome')
+        else:
+            error = "Invalid login. Please try again."
+            self.render("login.html", error=error, user=self.user)
 
 class SinglePost(BlogHandler):
     """Displays a single blog post"""
@@ -122,22 +140,6 @@ class NewPostHandler(BlogHandler):
             else:
                 error = "subject and content, please!"
             self.render("newpost.html", subject=subject, content=content, error=error, user=self.user)
-
-class UserLoginHandler(BlogHandler):
-    def get(self):
-        self.render("login.html", user=self.user)
-
-    def post(self):
-        username = self.request.get("username")
-        password = self.request.get("password")
-
-        u = User.is_valid_login(str(username), str(password))
-        if u:
-            self.login(u)
-            self.redirect('/blog/welcome')
-        else:
-            error = "Invalid login"
-            self.render("login.html", error=error, user=self.user)
 
 class LogoutHandler(BlogHandler):
     def get(self):
@@ -375,7 +377,7 @@ class DeleteCommentHandler(BlogHandler):
 
 app = webapp2.WSGIApplication([("/blog/?", FrontPage),
                                ("/blog/signup", SignUp),
-                               ("/blog/login", UserLoginHandler),
+                               ("/blog/login", Login),
                                ("/blog/welcome", WelcomeHandler),
                                ("/blog/logout", LogoutHandler),
                                ("/blog/([0-9]+)", SinglePost),
