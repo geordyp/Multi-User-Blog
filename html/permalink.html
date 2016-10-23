@@ -3,11 +3,11 @@
 {% block content %}
   {{post.render() | safe}}
 
-  <a href="/blog/like?post_id={{post_id}}">Like</a>
+  <a href="/blog/like?post_id={{post.key().id()}}">Like</a>
   {% if liked %}👍{% endif %}
-  <a href="/blog/delete?post_id={{post_id}}">Delete</a>
-  <a href="/blog/edit?post_id={{post_id}}">Edit</a>
-  <a href="/blog/newcomment?post_id={{post_id}}">Comment</a>
+  <a href="/blog/delete?post_id={{post.key().id()}}">Delete</a>
+  <a href="/blog/edit?post_id={{post.key().id()}}">Edit</a>
+  <a href="/blog/newcomment?post_id={{post.key().id()}}">Comment</a>
   {% if error %}{{error}}{% endif %}
 
   {% for comment in comments %}

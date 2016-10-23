@@ -42,29 +42,21 @@ class FrontPage(BlogHandler):
         posts = Post.all().order("-created")
         self.render("front.html", posts=posts, user=self.user)
 
-class PostPageHandler(BlogHandler):
+class SinglePost(BlogHandler):
+    """Displays a single blog post"""
     def get(self, post_id):
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
+        post_key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(post_key)
 
         if not post:
-            self.error(404)
-            return
-
-        msg = None
-        liked = False
-        if self.user and UserLike.by_post_id_username(str(post_id), str(self.user.username)):
-            liked = True
-
-        comments = Comment.all().filter("post_id =", str(post_id)).order("-last_modified")
-
-        self.render("permalink.html",
-                    post=post,
-                    post_id=post_id,
-                    liked=liked,
-                    error=msg,
-                    comments=comments,
-                    user=self.user)
+            # Post was not found
+            self.render("404.html")
+        else:
+            self.render("permalink.html",
+                        post=post,
+                        liked=self.user and UserLike.by_post_id_username(str(post_id), str(self.user.username)),
+                        comments=Comment.by_post_id(str(post_id)),
+                        user=self.user)
 
 class NewPostHandler(BlogHandler):
     def get(self):
@@ -378,18 +370,16 @@ class DeleteCommentHandler(BlogHandler):
                             comments=Comment.by_post_id(post_id),
                             user=self.user)
 
-app = webapp2.WSGIApplication([
-    ("/blog/?", FrontPage),
-    ("/blog/newpost", NewPostHandler),
-    ("/blog/([0-9]+)", PostPageHandler),
-    ("/blog/signup", UserSignUpHandler),
-    ("/blog/login", UserLoginHandler),
-    ("/blog/welcome", WelcomeHandler),
-    ("/blog/logout", LogoutHandler),
-    ("/blog/like", LikeHandler),
-    ("/blog/delete", DeleteHandler),
-    ("/blog/edit", EditHandler),
-    ("/blog/newcomment", NewCommentHandler),
-    ("/blog/comment/edit", EditCommentHandler),
-    ("/blog/comment/delete", DeleteCommentHandler)
-], debug=True)
+app = webapp2.WSGIApplication([("/blog/?", FrontPage),
+                               ("/blog/([0-9]+)", SinglePost),
+                               ("/blog/newpost", NewPostHandler),
+                               ("/blog/signup", UserSignUpHandler),
+                               ("/blog/login", UserLoginHandler),
+                               ("/blog/welcome", WelcomeHandler),
+                               ("/blog/logout", LogoutHandler),
+                               ("/blog/like", LikeHandler),
+                               ("/blog/delete", DeleteHandler),
+                               ("/blog/edit", EditHandler),
+                               ("/blog/newcomment", NewCommentHandler),
+                               ("/blog/comment/edit", EditCommentHandler),
+                               ("/blog/comment/delete", DeleteCommentHandler)], debug=True)
