@@ -5,7 +5,7 @@ A blog web application using Google App Engine.
 Geordy Williams
 
 # Deployed App
-[Blog is available here](http://geordy-146823.appspot.com/)
+[Blog is available here](http://geordy-146823.appspot.com/blog)
 
 # Setup
 1. Clone this repo onto your machine
