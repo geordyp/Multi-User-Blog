@@ -233,12 +233,12 @@ class LikePost(BlogHandler):
     """User can like a blog post"""
     def get(self):
         post_id = self.request.get("post_id")
-        post_key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post_key = db.Key.from_path("Post", int(post_id), parent=blog_key())
         post = db.get(post_key)
 
         liked = False
         msg = ""
-        
+
         if not self.user:
             # The user is not logged in
             msg = "You need to login to like this post."
@@ -264,36 +264,47 @@ class LikePost(BlogHandler):
                     error=msg,
                     user=self.user)
 
-class NewCommentHandler(BlogHandler):
+class NewComment(BlogHandler):
+    """Form to create a comment for a blog post"""
     def get(self):
         post_id = self.request.get("post_id")
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
+        post_key = db.Key.from_path("Post", int(post_id), parent=blog_key())
+        post = db.get(post_key)
 
-        self.render("newcomment.html", post=post, user=self.user)
+        if not self.user:
+            # The user is not logged in
+            msg = "You need to login to comment on this post."
+            self.render("permalink.html",
+                        post=post,
+                        liked=self.user and UserLike.by_post_id_username(str(post_id), str(self.user.username)),
+                        comments=Comment.by_post_id(str(post_id)),
+                        error=msg,
+                        user=self.user)
+        else:
+            self.render("newcomment.html", post=post, user=self.user)
 
     def post(self):
         comment = self.request.get("comment")
         post_id = self.request.get("post_id")
 
-        if comment:
-            c = Comment(parent = comments_key(), content=comment, post_id=post_id, created_by=self.user.username)
-            c.put()
-            self.redirect('/blog/%s' % str(post_id))
+        if not self.user:
+            # The user is not logged in
+            msg = "You need to login to comment on this post."
         else:
-            error = "there's no comment"
-            liked = False
-            if UserLike.by_post_id_username(post_id, self.user.username):
-                liked = True
+            if comment:
+                c = Comment(parent=comments_key(), content=comment, post_id=post_id, created_by=self.user.username)
+                c.put()
+                self.redirect("/blog/%s" % str(post_id))
+                return
+            else:
+                msg = "Please write a comment."
 
-            self.render("permalink.html",
-                        post=post,
-                        post_id=post_id,
-                        error=msg,
-                        liked=liked,
-                        comments=Comment.by_post_id(post_id),
-                        error_comment=error,
-                        user=self.user)
+        self.render("permalink.html",
+                    post=post,
+                    liked=self.user and UserLike.by_post_id_username(str(post_id), str(self.user.username)),
+                    comments=Comment.by_post_id(str(post_id)),
+                    error=msg,
+                    user=self.user)
 
 class EditCommentHandler(BlogHandler):
     def get(self):
@@ -372,6 +383,6 @@ app = webapp2.WSGIApplication([("/blog/?", FrontPage),
                                ("/blog/delete", DeletePost),
                                ("/blog/edit", EditPost),
                                ("/blog/like", LikePost),
-                               ("/blog/newcomment", NewCommentHandler),
+                               ("/blog/newcomment", NewComment),
                                ("/blog/comment/edit", EditCommentHandler),
                                ("/blog/comment/delete", DeleteCommentHandler)], debug=True)
