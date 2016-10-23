@@ -3,16 +3,29 @@
 {% block content %}
   {{post.render() | safe}}
 
-  <a href="/blog/like?post_id={{post.key().id()}}">Like</a>
-  {% if liked %}👍{% endif %}
-  <a href="/blog/delete?post_id={{post.key().id()}}">Delete</a>
-  <a href="/blog/edit?post_id={{post.key().id()}}">Edit</a>
-  <a href="/blog/newcomment?post_id={{post.key().id()}}">Comment</a>
-  {% if error %}{{error}}{% endif %}
-
-  {% for comment in comments %}
-    {{ comment.render() | safe }}
+  {% if user %}
     <br>
-  {% endfor %}
+    <a href="/blog/like?post_id={{post.key().id()}}">Like</a>
+    {% if liked %}👍{% endif %}
+    <br>
+    <a href="/blog/delete?post_id={{post.key().id()}}">Delete Post</a>
+    <br>
+    <a href="/blog/edit?post_id={{post.key().id()}}">Edit Post</a>
+    <br>
+    <a href="/blog/newcomment?post_id={{post.key().id()}}">Leave a Comment</a>
+    <br>
+    <div class="error">
+      <br>
+      {% if error %}{{error}}{% endif %}
+    </div>
+  {% endif %}
+
+  <div class="comments">
+    <h3>Comments</h3>
+    {% for comment in comments %}
+      {{ comment.render(user) | safe }}
+      <br>
+    {% endfor %}
+  </div>
 
 {% endblock %}

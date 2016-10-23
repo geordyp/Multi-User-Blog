@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h3>new comment</h3>
-
 {{post.render() | safe}}
+
+<h3>Write a comment</h3>
 
 <form method="post">
   <label>
@@ -11,7 +11,6 @@
       <textarea name="comment">{{comment}}</textarea>
   </label>
   <div class="error">{{error_comment}}</div>
-  <input type="submit">
+  <a href="/blog/{{post.key().id()}}">Cancel</a> - <input type="submit">
 </form>
-<a href="/blog/{{post.key().id()}}">Cancel</a>
 {% endblock %}

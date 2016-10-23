@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h3>edit post</h3>
+<h3>Edit Post</h3>
 
 <form method="post">
-  <label>
+  <label style="visibility: hidden;">
       <div>post id</div>
       <input type="text" name="post_id" value="{{post_id}}" disabled="True">
   </label>
@@ -15,14 +15,13 @@
   </label>
 
   <label>
-      <div>blog</div>
+      <div><br>blog</div>
       <textarea name="content">{{content}}</textarea>
   </label>
 
   <div class="error">{{error}}</div>
 
-  <input type="submit">
-  <a href="/blog/{{post_id}}">Cancel</a>
+  <a href="/blog/{{post_id}}">Cancel</a> - <input type="submit">
 </form>
 
 {% endblock %}

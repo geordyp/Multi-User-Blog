@@ -2,17 +2,54 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>Multi User Blog</title>
+    <title>Bloggy</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+    <style type="text/css">
+      body {
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+        margin: 10;
+        padding: 10;
+        font-family: "Roboto", sans-serif;
+      }
+      a {
+        color: #02b3e4;
+        text-decoration: none;
+      }
+      textarea {
+        height: 100px;
+        width: 400px;
+      }
+      .header_title {
+        text-align: center;
+      }
+      .label {text-align: right;}
+      .error {color: red;}
+    </style>
   </head>
   <body>
 
   <body>
-    {% if user %}
-      <p>Howdy, {{user.username}} | <a href="/blog/logout">logout</a></p>
-    {% else %}
-      <a href="/blog/login">login</p>
-    {% endif %}
-    <h1><a href="/blog">BLOG</a></h1>
+    <header>
+      <div class="nav">
+        {% if user %}
+          <p>
+            Howdy, {{user.username}} -
+            <a href="/blog/newpost">new post</a> -
+            <a href="/blog/logout">logout</a>
+          </p>
+        {% else %}
+          <p>
+            <a href="/blog/login">login</a> -
+            <a href="/blog/signup">sign up</a>
+          </p>
+        {% endif %}
+      </div>
+      <div class="header_title">
+        <h1><a href="/blog">BLOGGY</a></h1>
+      </div>
+    </header>
 
     {% block content %}
     {% endblock %}

@@ -5,15 +5,12 @@ from post import *
 from util import *
 
 class BlogHandler(webapp2.RequestHandler):
+    """Contains useful functions for all handlers"""
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
 
-    def render_str(self, template, **params):
-        t = JINJA_ENV.get_template(template)
-        return t.render(params)
-
     def render(self, template, **kw):
-        self.write(self.render_str(template, **kw))
+        self.write(render_str(template, **kw))
 
     def set_secure_cookie(self, name, val):
         cookie_val = make_secure_val(val)
@@ -79,7 +76,7 @@ class SignUp(BlogHandler):
 
         if have_error:
             # there was an error, re-render signup.html with errors
-            self.render("signup".html, **params)
+            self.render("signup.html", **params)
         else:
             # there was no error, register user
             u = User.register(str(username), str(password), str(email))
@@ -164,26 +161,20 @@ class DeletePost(BlogHandler):
         post_key = db.Key.from_path("Post", int(post_id), parent=blog_key())
         post = db.get(post_key)
 
-        if not self.user:
-            # The user is not logged in
-            msg = "You need to login to delete this post."
+        if post.created_by == self.user.username:
+            # The user did create the post, delete it
+            post.delete()
+            msg = "Your post has been successfully deleted."
+            self.render('confirmation.html', msg=msg, user=self.user)
         else:
-            if post.created_by == self.user.username:
-                # The user did create the post, delete it
-                post.delete()
-                msg = "Your post has been successfully deleted."
-                self.render('confirmation.html', msg=msg, user=self.user)
-                return
-            else:
-                # The user did NOT create the post, can't delete it
-                msg = "You can't delete this post because you didn't create it."
-
-        self.render("permalink.html",
-                    post=post,
-                    liked=self.user and UserLike.by_post_id_username(str(post_id), str(self.user.username)),
-                    comments=Comment.by_post_id(str(post_id)),
-                    error=msg,
-                    user=self.user)
+            # The user did NOT create the post, can't delete it
+            msg = "You can't delete this post because you didn't create it."
+            self.render("permalink.html",
+                        post=post,
+                        liked=self.user and UserLike.by_post_id_username(str(post_id), str(self.user.username)),
+                        comments=Comment.by_post_id(str(post_id)),
+                        error=msg,
+                        user=self.user)
 
 class EditPost(BlogHandler):
     """Form to edit a blog post"""
@@ -192,24 +183,18 @@ class EditPost(BlogHandler):
         post_key = db.Key.from_path("Post", int(post_id), parent=blog_key())
         post = db.get(post_key)
 
-        if not self.user:
-            # The user is not logged in
-            msg = "You need to login to edit this post."
+        if post.created_by == self.user.username:
+            # The user did create the post, edit it
+            self.render("editpost.html", post_id=post_id, subject=post.subject, content=post.content, user=self.user)
         else:
-            if post.created_by == self.user.username:
-                # The user did create the post, edit it
-                self.render("editpost.html", post_id=post_id, subject=post.subject, content=post.content, user=self.user)
-                return
-            else:
-                # The user did NOT create the post, can't edit it
-                msg = "You can't edit this post because you didn't create it."
-
-        self.render("permalink.html",
-                    post=post,
-                    liked=self.user and UserLike.by_post_id_username(str(post_id), str(self.user.username)),
-                    comments=Comment.by_post_id(str(post_id)),
-                    error=msg,
-                    user=self.user)
+            # The user did NOT create the post, can't edit it
+            msg = "You can't edit this post because you didn't create it."
+            self.render("permalink.html",
+                        post=post,
+                        liked=self.user and UserLike.by_post_id_username(str(post_id), str(self.user.username)),
+                        comments=Comment.by_post_id(str(post_id)),
+                        error=msg,
+                        user=self.user)
 
     def post(self):
         subject = self.request.get("subject")
@@ -239,23 +224,19 @@ class LikePost(BlogHandler):
         liked = False
         msg = ""
 
-        if not self.user:
-            # The user is not logged in
-            msg = "You need to login to like this post."
+        if post.created_by == self.user.username:
+            # The user created this post, can't like it
+            msg = "You can't like your own post."
         else:
-            if post.created_by == self.user.username:
-                # The user created this post, can't like it
-                msg = "You can't like your own post."
+            like = UserLike.by_post_id_username(post_id, self.user.username)
+            # toggle like
+            if like:
+                like.delete()
+                liked = False
             else:
-                like = UserLike.by_post_id_username(post_id, self.user.username)
-                # toggle like
-                if like:
-                    like.delete()
-                    liked = False
-                else:
-                    like = UserLike(parent = likes_key(), post_id=post_id, username=self.user.username)
-                    like.put()
-                    liked = True
+                like = UserLike(parent = likes_key(), post_id=post_id, username=self.user.username)
+                like.put()
+                liked = True
 
         self.render("permalink.html",
                     post=post,
@@ -271,40 +252,19 @@ class NewComment(BlogHandler):
         post_key = db.Key.from_path("Post", int(post_id), parent=blog_key())
         post = db.get(post_key)
 
-        if not self.user:
-            # The user is not logged in
-            msg = "You need to login to comment on this post."
-            self.render("permalink.html",
-                        post=post,
-                        liked=self.user and UserLike.by_post_id_username(str(post_id), str(self.user.username)),
-                        comments=Comment.by_post_id(str(post_id)),
-                        error=msg,
-                        user=self.user)
-        else:
-            self.render("newcomment.html", post=post, user=self.user)
+        self.render("newcomment.html", post=post, user=self.user)
 
     def post(self):
         comment = self.request.get("comment")
         post_id = self.request.get("post_id")
 
-        if not self.user:
-            # The user is not logged in
-            msg = "You need to login to comment on this post."
+        if comment:
+            c = Comment(parent=comments_key(), content=comment, post_id=post_id, created_by=self.user.username)
+            c.put()
+            self.redirect("/blog/%s" % str(post_id))
         else:
-            if comment:
-                c = Comment(parent=comments_key(), content=comment, post_id=post_id, created_by=self.user.username)
-                c.put()
-                self.redirect("/blog/%s" % str(post_id))
-                return
-            else:
-                msg = "Please write a comment."
-
-        self.render("permalink.html",
-                    post=post,
-                    liked=self.user and UserLike.by_post_id_username(str(post_id), str(self.user.username)),
-                    comments=Comment.by_post_id(str(post_id)),
-                    error=msg,
-                    user=self.user)
+            msg = "Please write a comment."
+            self.render("newcomment.html", post=post, comment=comment, error_comment=msg, user=self.user)
 
 class DeleteComment(BlogHandler):
     """Delete a comment"""
@@ -317,18 +277,12 @@ class DeleteComment(BlogHandler):
         post_key = db.Key.from_path("Post", int(post_id), parent=blog_key())
         post = db.get(post_key)
 
-        if not self.user:
-            # The user is not logged in
-            msg = "You need to login to delete that comment"
+        if comment.created_by == self.user.username:
+            comment.delete()
+            msg = "Your comment has been successfully deleted."
         else:
-            if comment.created_by == self.user.username:
-                comment.delete()
-                msg = "Your comment has been successfully deleted."
-                self.render('confirmation.html', msg=msg, user=self.user)
-                return
-            else:
-                # The user did NOT create the post, can't delete it
-                msg = "You can't delete this post because you didn't create it."
+            # The user did NOT create the post, can't delete it
+            msg = "You can't delete that comment because you didn't create it."
 
         self.render("permalink.html",
                     post=post,
@@ -348,14 +302,25 @@ class EditComment(BlogHandler):
         post_key = db.Key.from_path("Post", int(post_id), parent=blog_key())
         post = db.get(post_key)
 
-        self.render("newcomment.html", post=post, comment=comment.content, user=self.user)
+        if comment.created_by == self.user.username:
+            # The user did create the comment, edit it
+            self.render("newcomment.html", post=post, comment=comment.content, user=self.user)
+        else:
+            # The user did NOT create the comment, can't edit it
+            msg = "You can't edit that comment because you didn't create it."
+            self.render("permalink.html",
+                        post=post,
+                        liked=self.user and UserLike.by_post_id_username(str(post_id), str(self.user.username)),
+                        comments=Comment.by_post_id(str(post_id)),
+                        error=msg,
+                        user=self.user)
 
     def post(self):
         content = self.request.get("comment")
         comment_id = self.request.get("comment_id")
         comment_key = db.Key.from_path("Comment", int(comment_id), parent=comments_key())
         comment = db.get(comment_key)
-        post_id = c.post_id
+        post_id = comment.post_id
 
         if comment:
             comment.content = content
@@ -366,7 +331,7 @@ class EditComment(BlogHandler):
             post_key = db.Key.from_path("Post", int(post_id), parent=blog_key())
             post = db.get(post_key)
 
-            self.render("newcomment.html", post=post, comment=comment, error_comment=error, user=self.user)
+            self.render("newcomment.html", post=post, comment=comment, error_comment=msg, user=self.user)
 
 app = webapp2.WSGIApplication([("/blog/?", FrontPage),
                                ("/blog/signup", SignUp),

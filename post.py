@@ -91,14 +91,14 @@ class Comment(db.Model):
     created = db.DateTimeProperty(auto_now_add=True)
     last_modified = db.DateTimeProperty(auto_now=True)
 
-    def render(self):
+    def render(self, user):
         """Renders Comment entity using a Jinja HTML template
 
         Return:
             The HTML template populated with the Comment's data
         """
         self._render_text = self.content.replace("\n", "<br>")
-        return render_str("comment.html", comment=self)
+        return render_str("comment.html", comment=self, user=user)
 
     @classmethod
     def by_post_id(cls, post_id):
@@ -110,7 +110,7 @@ class Comment(db.Model):
         Return:
             The comments from the post with the given ID
         """
-        return cls.all().filter("post_id =", str(post_id)).order("-last_modified")
+        return cls.all().filter("post_id =", str(post_id))
 
 def comments_key(group="default"):
     """Groups Comment entities under parent, "default"
