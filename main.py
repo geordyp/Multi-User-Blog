@@ -337,36 +337,36 @@ class DeleteComment(BlogHandler):
                     error=msg,
                     user=self.user)
 
-class EditCommentHandler(BlogHandler):
+class EditComment(BlogHandler):
+    """Form to edit a comment"""
     def get(self):
         comment_id = self.request.get("comment_id")
-        key = db.Key.from_path("Comment", int(comment_id), parent=comments_key())
-        comment = db.get(key)
+        comment_key = db.Key.from_path("Comment", int(comment_id), parent=comments_key())
+        comment = db.get(comment_key)
 
         post_id = comment.post_id
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
+        post_key = db.Key.from_path("Post", int(post_id), parent=blog_key())
+        post = db.get(post_key)
 
-        self.render("newcomment.html", comment=comment.content, post=post, user=self.user)
+        self.render("newcomment.html", post=post, comment=comment.content, user=self.user)
 
     def post(self):
-        comment = self.request.get("comment")
+        content = self.request.get("comment")
         comment_id = self.request.get("comment_id")
-        key = db.Key.from_path("Comment", int(comment_id), parent=comments_key())
-        c = db.get(key)
+        comment_key = db.Key.from_path("Comment", int(comment_id), parent=comments_key())
+        comment = db.get(comment_key)
         post_id = c.post_id
 
-        if c:
-            c.content = comment
-            c.put()
-            self.redirect('/blog/%s' % str(post_id))
+        if comment:
+            comment.content = content
+            comment.put()
+            self.redirect("/blog/%s" % str(post_id))
         else:
-            error = "there's no comment"
+            msg = "Please write a comment."
+            post_key = db.Key.from_path("Post", int(post_id), parent=blog_key())
+            post = db.get(post_key)
 
-            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-            post = db.get(key)
-
-            self.render("newcomment.html", error_comment=error, comment=comment, post=post, user=self.user)
+            self.render("newcomment.html", post=post, comment=comment, error_comment=error, user=self.user)
 
 app = webapp2.WSGIApplication([("/blog/?", FrontPage),
                                ("/blog/signup", SignUp),
@@ -380,4 +380,4 @@ app = webapp2.WSGIApplication([("/blog/?", FrontPage),
                                ("/blog/like", LikePost),
                                ("/blog/newcomment", NewComment),
                                ("/blog/comment/delete", DeleteComment),
-                               ("/blog/comment/edit", EditCommentHandler)], debug=True)
+                               ("/blog/comment/edit", EditComment)], debug=True)
