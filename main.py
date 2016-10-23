@@ -88,6 +88,11 @@ class SignUp(BlogHandler):
             self.set_secure_cookie("username", u.username)
             self.redirect("/blog/welcome")
 
+class Welcome(BlogHandler):
+    def get(self):
+        username = self.read_secure_cookie("username")
+        self.render('welcome.html', username = username)
+
 class Login(BlogHandler):
     """Login page where users can login into their account"""
     def get(self):
@@ -101,7 +106,7 @@ class Login(BlogHandler):
         u = User.is_valid_login(str(username), str(password))
         if u:
             self.login(u)
-            self.redirect('/blog/welcome')
+            self.redirect('/blog')
         else:
             error = "Invalid login. Please try again."
             self.render("login.html", error=error, user=self.user)
@@ -145,19 +150,6 @@ class LogoutHandler(BlogHandler):
     def get(self):
         self.logout()
         self.redirect('/blog/login')
-
-class WelcomeHandler(BlogHandler):
-    def get(self):
-        u_id = self.read_secure_cookie("user_id")
-        if u_id:
-            user = User.by_id(int(u_id))
-            if user and is_valid_username(str(user.username)):
-                self.render("welcome.html", username = str(user.username), user=self.user)
-            else:
-                self.redirect("/blog")
-        else:
-            name = self.read_secure_cookie("username")
-            self.render("welcome.html", username = str(name), user=self.user)
 
 class LikeHandler(BlogHandler):
     def get(self):
@@ -377,8 +369,8 @@ class DeleteCommentHandler(BlogHandler):
 
 app = webapp2.WSGIApplication([("/blog/?", FrontPage),
                                ("/blog/signup", SignUp),
+                               ("/blog/welcome", Welcome),
                                ("/blog/login", Login),
-                               ("/blog/welcome", WelcomeHandler),
                                ("/blog/logout", LogoutHandler),
                                ("/blog/([0-9]+)", SinglePost),
                                ("/blog/newpost", NewPostHandler),
