@@ -43,3 +43,42 @@ def check_secure_val(secure_val):
     val = secure_val.split("|")[0]
     if secure_val == make_secure_val(val):
         return val
+
+def is_valid_username(username):
+    """Checks if the username is valid using reg-ex
+
+    Args:
+        username (string): The user's name
+
+    Returns:
+        The True if the username is valid
+    """
+    # valid username reg-ex
+    user_re = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
+    return username and user_re.match(username)
+
+def is_valid_password(password):
+    """Checks if the password is valid using reg-ex
+
+    Args:
+        password (string): The user's password
+
+    Returns:
+        The True if the password is valid
+    """
+    # valid password reg-ex
+    pass_re = re.compile(r"^.{3,20}$")
+    return password and pass_re.match(password)
+
+def is_valid_email(email):
+    """Checks if the email is valid using reg-ex
+
+    Args:
+        email (string): The user's email
+
+    Returns:
+        The True if the email is valid
+    """
+    # valid email reg-ex
+    email_re = re.compile(r"^[\S]+@[\S]+\.[\S]+$")
+    return not email or email_re.match(email)
