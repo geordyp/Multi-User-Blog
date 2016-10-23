@@ -153,7 +153,7 @@ class NewPost(BlogHandler):
                 # The user is not logged in
                 error = "Please login to create a post."
             else:
-                # The form was not filled
+                # The form was not complete
                 error = "Please include Subject and Content."
             self.render("newpost.html", subject=subject, content=content, error=error, user=self.user)
 
@@ -225,25 +225,30 @@ class EditPost(BlogHandler):
             post.put()
             self.redirect("/blog/%s" % str(post_id))
         else:
+            # The form was not complete
             msg = "Please include Subject and Content."
             self.render("editpost.html", post_id=post_id, subject=subject, content=content, error=msg, user=self.user)
 
-class LikeHandler(BlogHandler):
+class LikePost(BlogHandler):
+    """User can like a blog post"""
     def get(self):
         post_id = self.request.get("post_id")
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
+        post_key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(post_key)
 
-        msg = None
-        liked = None
-
+        liked = False
+        msg = ""
+        
         if not self.user:
+            # The user is not logged in
             msg = "You need to login to like this post."
         else:
             if post.created_by == self.user.username:
+                # The user created this post, can't like it
                 msg = "You can't like your own post."
             else:
                 like = UserLike.by_post_id_username(post_id, self.user.username)
+                # toggle like
                 if like:
                     like.delete()
                     liked = False
@@ -254,10 +259,9 @@ class LikeHandler(BlogHandler):
 
         self.render("permalink.html",
                     post=post,
-                    post_id=post_id,
                     liked=liked,
+                    comments=Comment.by_post_id(str(post_id)),
                     error=msg,
-                    comments=Comment.by_post_id(post_id),
                     user=self.user)
 
 class NewCommentHandler(BlogHandler):
@@ -367,7 +371,7 @@ app = webapp2.WSGIApplication([("/blog/?", FrontPage),
                                ("/blog/newpost", NewPost),
                                ("/blog/delete", DeletePost),
                                ("/blog/edit", EditPost),
-                               ("/blog/like", LikeHandler),
+                               ("/blog/like", LikePost),
                                ("/blog/newcomment", NewCommentHandler),
                                ("/blog/comment/edit", EditCommentHandler),
                                ("/blog/comment/delete", DeleteCommentHandler)], debug=True)
