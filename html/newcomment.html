@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3>new comment</h3>
+
+{{post.render() | safe}}
+
+<form method="post">
+  <label>
+      <div>comment</div>
+      <textarea name="comment">{{comment}}</textarea>
+  </label>
+  <div class="error">{{error_comment}}</div>
+  <input type="submit">
+</form>
+
+{% endblock %}

@@ -2,11 +2,11 @@
   <div class="post-heading">
     <div class="post-title">
       <a href="/blog/{{p.key().id()}}">{{p.subject}}</a>
-      <p>Author: {{p.created_by.username}}</p>
+      <p>Author: {{p.created_by}}</p>
     </div>
 
     <div class="post-date">
-      {{p.created.strftime("%b %d, %Y")}}
+      {{p.last_modified.strftime("%b %d, %Y")}}
     </div>
   </div>
 

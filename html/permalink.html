@@ -7,5 +7,12 @@
   {% if liked %}👍{% endif %}
   <a href="/blog/delete?post_id={{post_id}}">Delete</a>
   <a href="/blog/edit?post_id={{post_id}}">Edit</a>
+  <a href="/blog/newcomment?post_id={{post_id}}">Comment</a>
   {% if error %}{{error}}{% endif %}
+
+  {% for c in comments %}
+    {{ c.render() | safe }}
+    <br>
+  {% endfor %}
+
 {% endblock %}
