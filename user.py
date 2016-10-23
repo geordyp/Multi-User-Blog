@@ -5,6 +5,7 @@ import re
 
 from google.appengine.ext import db
 
+
 class User(db.Model):
     """Data model for user
 
@@ -77,6 +78,7 @@ class User(db.Model):
         if u and is_valid_pw_login(username, pw, u.pw_hash):
             return u
 
+
 def users_key(group="default"):
     """Groups User entities under parent, "default"
 
@@ -88,6 +90,7 @@ def users_key(group="default"):
     """
     return db.Key.from_path("users", group)
 
+
 def make_salt(length=5):
     """Creates a salt for password hashing
 
@@ -98,6 +101,7 @@ def make_salt(length=5):
         The salt of the given length
     """
     return "".join(random.choice(string.letters) for x in xrange(length))
+
 
 def make_pw_hash(name, pw, salt=None):
     """Creates a password hash
@@ -115,6 +119,7 @@ def make_pw_hash(name, pw, salt=None):
         salt = make_salt()
     h = hashlib.sha256(name + pw + salt).hexdigest()
     return "%s,%s" % (h, salt)
+
 
 def is_valid_pw_login(name, pw, h):
     """Checks if the given password is valid for login
