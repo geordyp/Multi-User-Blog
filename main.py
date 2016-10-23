@@ -4,7 +4,7 @@ from user import *
 from post import *
 from util import *
 
-class Handler(webapp2.RequestHandler):
+class BlogHandler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
 
@@ -36,12 +36,13 @@ class Handler(webapp2.RequestHandler):
         uid = self.read_secure_cookie("user_id")
         self.user = uid and User.by_id(int(uid))
 
-class MainPage(Handler):
+class FrontPage(BlogHandler):
+    """Front page of the blog, displays 10 most recent posts"""
     def get(self):
-        posts = db.GqlQuery("SELECT * FROM Post ORDER BY created DESC LIMIT 10")
+        posts = Post.all().order("-created")
         self.render("front.html", posts=posts, user=self.user)
 
-class PostPageHandler(Handler):
+class PostPageHandler(BlogHandler):
     def get(self, post_id):
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
         post = db.get(key)
@@ -65,7 +66,7 @@ class PostPageHandler(Handler):
                     comments=comments,
                     user=self.user)
 
-class NewPostHandler(Handler):
+class NewPostHandler(BlogHandler):
     def get(self):
         self.render("newpost.html", user=self.user)
 
@@ -84,7 +85,7 @@ class NewPostHandler(Handler):
                 error = "subject and content, please!"
             self.render("newpost.html", subject=subject, content=content, error=error, user=self.user)
 
-class UserLoginHandler(Handler):
+class UserLoginHandler(BlogHandler):
     def get(self):
         self.render("login.html", user=self.user)
 
@@ -100,7 +101,7 @@ class UserLoginHandler(Handler):
             error = "Invalid login"
             self.render("login.html", error=error, user=self.user)
 
-class UserSignUpHandler(Handler):
+class UserSignUpHandler(BlogHandler):
     def get(self):
         self.render("signup.html", user=self.user)
 
@@ -143,12 +144,12 @@ class UserSignUpHandler(Handler):
             self.set_secure_cookie("username", u.username)
             self.redirect("/blog/welcome")
 
-class LogoutHandler(Handler):
+class LogoutHandler(BlogHandler):
     def get(self):
         self.logout()
         self.redirect('/blog/login')
 
-class WelcomeHandler(Handler):
+class WelcomeHandler(BlogHandler):
     def get(self):
         u_id = self.read_secure_cookie("user_id")
         if u_id:
@@ -161,7 +162,7 @@ class WelcomeHandler(Handler):
             name = self.read_secure_cookie("username")
             self.render("welcome.html", username = str(name), user=self.user)
 
-class LikeHandler(Handler):
+class LikeHandler(BlogHandler):
     def get(self):
         post_id = self.request.get("post_id")
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
@@ -193,7 +194,7 @@ class LikeHandler(Handler):
                     comments=Comment.by_post_id(post_id),
                     user=self.user)
 
-class DeleteHandler(Handler):
+class DeleteHandler(BlogHandler):
     def get(self):
         post_id = self.request.get("post_id")
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
@@ -227,7 +228,7 @@ class DeleteHandler(Handler):
                             comments=Comment.by_post_id(post_id),
                             user=self.user)
 
-class EditHandler(Handler):
+class EditHandler(BlogHandler):
     def get(self):
         post_id = self.request.get("post_id")
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
@@ -279,7 +280,7 @@ class EditHandler(Handler):
             error = "subject and content, please!"
             self.render("editpost.html", post_id=post_id, subject=post.subject, content=post.content, user=self.user)
 
-class NewCommentHandler(Handler):
+class NewCommentHandler(BlogHandler):
     def get(self):
         post_id = self.request.get("post_id")
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
@@ -310,7 +311,7 @@ class NewCommentHandler(Handler):
                         error_comment=error,
                         user=self.user)
 
-class EditCommentHandler(Handler):
+class EditCommentHandler(BlogHandler):
     def get(self):
         comment_id = self.request.get("comment_id")
         key = db.Key.from_path("Comment", int(comment_id), parent=comments_key())
@@ -342,7 +343,7 @@ class EditCommentHandler(Handler):
             self.render("newcomment.html", error_comment=error, comment=comment, post=post, user=self.user)
 
 
-class DeleteCommentHandler(Handler):
+class DeleteCommentHandler(BlogHandler):
     def get(self):
         comment_id = self.request.get("comment_id")
         key = db.Key.from_path("Comment", int(comment_id), parent=comments_key())
@@ -378,7 +379,7 @@ class DeleteCommentHandler(Handler):
                             user=self.user)
 
 app = webapp2.WSGIApplication([
-    ("/blog/?", MainPage),
+    ("/blog/?", FrontPage),
     ("/blog/newpost", NewPostHandler),
     ("/blog/([0-9]+)", PostPageHandler),
     ("/blog/signup", UserSignUpHandler),
