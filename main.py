@@ -111,6 +111,11 @@ class Login(BlogHandler):
             error = "Invalid login. Please try again."
             self.render("login.html", error=error, user=self.user)
 
+class Logout(BlogHandler):
+    def get(self):
+        self.logout()
+        self.redirect('/blog/login')
+
 class SinglePost(BlogHandler):
     """Displays a single blog post"""
     def get(self, post_id):
@@ -145,11 +150,6 @@ class NewPostHandler(BlogHandler):
             else:
                 error = "subject and content, please!"
             self.render("newpost.html", subject=subject, content=content, error=error, user=self.user)
-
-class LogoutHandler(BlogHandler):
-    def get(self):
-        self.logout()
-        self.redirect('/blog/login')
 
 class LikeHandler(BlogHandler):
     def get(self):
@@ -371,7 +371,7 @@ app = webapp2.WSGIApplication([("/blog/?", FrontPage),
                                ("/blog/signup", SignUp),
                                ("/blog/welcome", Welcome),
                                ("/blog/login", Login),
-                               ("/blog/logout", LogoutHandler),
+                               ("/blog/logout", Logout),
                                ("/blog/([0-9]+)", SinglePost),
                                ("/blog/newpost", NewPostHandler),
                                ("/blog/delete", DeleteHandler),
