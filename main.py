@@ -306,6 +306,37 @@ class NewComment(BlogHandler):
                     error=msg,
                     user=self.user)
 
+class DeleteComment(BlogHandler):
+    """Delete a comment"""
+    def get(self):
+        comment_id = self.request.get("comment_id")
+        comment_key = db.Key.from_path("Comment", int(comment_id), parent=comments_key())
+        comment = db.get(comment_key)
+
+        post_id = comment.post_id
+        post_key = db.Key.from_path("Post", int(post_id), parent=blog_key())
+        post = db.get(post_key)
+
+        if not self.user:
+            # The user is not logged in
+            msg = "You need to login to delete that comment"
+        else:
+            if comment.created_by == self.user.username:
+                comment.delete()
+                msg = "Your comment has been successfully deleted."
+                self.render('confirmation.html', msg=msg, user=self.user)
+                return
+            else:
+                # The user did NOT create the post, can't delete it
+                msg = "You can't delete this post because you didn't create it."
+
+        self.render("permalink.html",
+                    post=post,
+                    liked=self.user and UserLike.by_post_id_username(str(post_id), str(self.user.username)),
+                    comments=Comment.by_post_id(str(post_id)),
+                    error=msg,
+                    user=self.user)
+
 class EditCommentHandler(BlogHandler):
     def get(self):
         comment_id = self.request.get("comment_id")
@@ -337,42 +368,6 @@ class EditCommentHandler(BlogHandler):
 
             self.render("newcomment.html", error_comment=error, comment=comment, post=post, user=self.user)
 
-
-class DeleteCommentHandler(BlogHandler):
-    def get(self):
-        comment_id = self.request.get("comment_id")
-        key = db.Key.from_path("Comment", int(comment_id), parent=comments_key())
-        c = db.get(key)
-        post_id = c.post_id
-
-        if not self.user:
-            msg = "You need to login to delete a post."
-            self.render("permalink.html",
-                        post=post,
-                        post_id=post_id,
-                        liked=None,
-                        error=msg,
-                        comments=Comment.by_post_id(post_id),
-                        user=self.user)
-        else:
-            if c.created_by == self.user.username:
-                c.delete()
-                msg = "Your comment has been successfully deleted."
-                self.render('confirmation.html', msg=msg, user=self.user)
-            else:
-                msg = "You didn't create this comment. You can't delete it."
-                liked = False
-                if UserLike.by_post_id_username(post_id, self.user.username):
-                    liked = True
-
-                self.render("permalink.html",
-                            post=post,
-                            post_id=post_id,
-                            liked=liked,
-                            error=msg,
-                            comments=Comment.by_post_id(post_id),
-                            user=self.user)
-
 app = webapp2.WSGIApplication([("/blog/?", FrontPage),
                                ("/blog/signup", SignUp),
                                ("/blog/welcome", Welcome),
@@ -384,5 +379,5 @@ app = webapp2.WSGIApplication([("/blog/?", FrontPage),
                                ("/blog/edit", EditPost),
                                ("/blog/like", LikePost),
                                ("/blog/newcomment", NewComment),
-                               ("/blog/comment/edit", EditCommentHandler),
-                               ("/blog/comment/delete", DeleteCommentHandler)], debug=True)
+                               ("/blog/comment/delete", DeleteComment),
+                               ("/blog/comment/edit", EditCommentHandler)], debug=True)
