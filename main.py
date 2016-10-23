@@ -54,7 +54,7 @@ class SignUp(BlogHandler):
         email = self.request.get("email")
 
         have_error = False
-        params = dict(username = username, email = email)
+        params = dict(username=username, email=email)
 
         # check username
         if not is_valid_username(username):
@@ -89,9 +89,10 @@ class SignUp(BlogHandler):
             self.redirect("/blog/welcome")
 
 class Welcome(BlogHandler):
+    """Welcome a newly created user, confirming account creation"""
     def get(self):
         username = self.read_secure_cookie("username")
-        self.render('welcome.html', username = username)
+        self.render('welcome.html', username=username)
 
 class Login(BlogHandler):
     """Login page where users can login into their account"""
@@ -112,6 +113,7 @@ class Login(BlogHandler):
             self.render("login.html", error=error, user=self.user)
 
 class Logout(BlogHandler):
+    """Logout user"""
     def get(self):
         self.logout()
         self.redirect('/blog/login')
@@ -132,7 +134,8 @@ class SinglePost(BlogHandler):
                         comments=Comment.by_post_id(str(post_id)),
                         user=self.user)
 
-class NewPostHandler(BlogHandler):
+class NewPost(BlogHandler):
+    """Form to create a new blog post"""
     def get(self):
         self.render("newpost.html", user=self.user)
 
@@ -146,9 +149,9 @@ class NewPostHandler(BlogHandler):
             self.redirect('/blog/%s' % str(p.key().id()))
         else:
             if not self.user:
-                error = "please login to create a post"
+                error = "Please login to create a post."
             else:
-                error = "subject and content, please!"
+                error = "Please include Subject and Content."
             self.render("newpost.html", subject=subject, content=content, error=error, user=self.user)
 
 class LikeHandler(BlogHandler):
@@ -373,7 +376,7 @@ app = webapp2.WSGIApplication([("/blog/?", FrontPage),
                                ("/blog/login", Login),
                                ("/blog/logout", Logout),
                                ("/blog/([0-9]+)", SinglePost),
-                               ("/blog/newpost", NewPostHandler),
+                               ("/blog/newpost", NewPost),
                                ("/blog/delete", DeleteHandler),
                                ("/blog/edit", EditHandler),
                                ("/blog/like", LikeHandler),
