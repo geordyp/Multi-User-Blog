@@ -10,8 +10,8 @@
   <a href="/blog/newcomment?post_id={{post_id}}">Comment</a>
   {% if error %}{{error}}{% endif %}
 
-  {% for c in comments %}
-    {{ c.render() | safe }}
+  {% for comment in comments %}
+    {{ comment.render() | safe }}
     <br>
   {% endfor %}
 

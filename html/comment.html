@@ -1,18 +1,18 @@
 <div class="comment">
   <div class="comment-heading">
     <div class="comment-title">
-      <p>Author: {{c.created_by}}</p>
+      <p>Author: {{comment.created_by}}</p>
     </div>
 
     <div class="comment-date">
-      {{c.last_modified.strftime("%b %d, %Y")}}
+      {{comment.last_modified.strftime("%b %d, %Y")}}
     </div>
   </div>
 
   <div class="comment-content">
-    {{c._render_text | safe}}
+    {{comment._render_text | safe}}
   </div>
 
-  <a href="/blog/comment/delete?comment_id={{c.key().id()}}">Delete</a>
-  <a href="/blog/comment/edit?comment_id={{c.key().id()}}">Edit</a>
+  <a href="/blog/comment/delete?comment_id={{comment.key().id()}}">Delete</a>
+  <a href="/blog/comment/edit?comment_id={{comment.key().id()}}">Edit</a>
 </div>

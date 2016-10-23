@@ -1,11 +1,11 @@
 import os
-import jinja2
 import hmac
+import jinja2
 
 SECRET = 'qkp0Vr0OY8nnB0eM0ddJIKLxkXkLW8SuCnoa7QCP'
 
-template_dir = os.path.join(os.path.dirname(__file__), "html")
-jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape = True)
+TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "html")
+JINJA_ENV = jinja2.Environment(loader=jinja2.FileSystemLoader(TEMPLATE_DIR), autoescape=True)
 
 def render_str(template, **params):
     """Renders a Jinja HTML template using the given params
@@ -17,7 +17,7 @@ def render_str(template, **params):
     Returns:
         Rendered HTML with the parameters provided.
     """
-    t = jinja_env.get_template(template)
+    t = JINJA_ENV.get_template(template)
     return t.render(params)
 
 def make_secure_val(val):

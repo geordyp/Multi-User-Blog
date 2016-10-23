@@ -1,6 +1,4 @@
-import string
-
-from util import *
+from util import render_str
 
 from google.appengine.ext import db
 
@@ -15,11 +13,11 @@ class Post(db.Model):
         last_modified (date): The date the post was last modified
         created_by (string): The username of the creator
     """
-    subject = db.StringProperty(required = True)
-    content = db.TextProperty(required = True)
-    created = db.DateTimeProperty(auto_now_add = True)
-    last_modified = db.DateTimeProperty(auto_now = True)
-    created_by = db.StringProperty(required = True)
+    subject = db.StringProperty(required=True)
+    content = db.TextProperty(required=True)
+    created = db.DateTimeProperty(auto_now_add=True)
+    last_modified = db.DateTimeProperty(auto_now=True)
+    created_by = db.StringProperty(required=True)
 
     def render(self):
         """Renders Post entity using a Jinja HTML template
@@ -28,9 +26,9 @@ class Post(db.Model):
             The HTML template populated with the Post's data
         """
         self._render_text = self.content.replace("\n", "<br>")
-        return render_str("post.html", p = self)
+        return render_str("post.html", p=self)
 
-def blog_key(name = "default"):
+def blog_key(name="default"):
     """Groups Post entities under parent, "default"
 
     Args:
@@ -49,8 +47,8 @@ class UserLike(db.Model):
         post_id (string): The blog post's ID
         username (text): The user's username
     """
-    post_id = db.StringProperty(required = True)
-    username = db.StringProperty(required = True)
+    post_id = db.StringProperty(required=True)
+    username = db.StringProperty(required=True)
 
     @classmethod
     def by_post_id_username(cls, post_id, username):
@@ -65,7 +63,7 @@ class UserLike(db.Model):
         """
         return cls.all().filter("post_id =", post_id).filter("username =", username).get()
 
-def likes_key(group = "default"):
+def likes_key(group="default"):
     """Groups UserLike entities under parent, "default"
 
     Args:
@@ -87,11 +85,11 @@ class Comment(db.Model):
         created (date): The date the post was created
         last_modified (date): The date the post was last modified
     """
-    content = db.TextProperty(required = True)
-    post_id = db.StringProperty(required = True)
-    created_by = db.StringProperty(required = True)
-    created = db.DateTimeProperty(auto_now_add = True)
-    last_modified = db.DateTimeProperty(auto_now = True)
+    content = db.TextProperty(required=True)
+    post_id = db.StringProperty(required=True)
+    created_by = db.StringProperty(required=True)
+    created = db.DateTimeProperty(auto_now_add=True)
+    last_modified = db.DateTimeProperty(auto_now=True)
 
     def render(self):
         """Renders Comment entity using a Jinja HTML template
@@ -100,7 +98,7 @@ class Comment(db.Model):
             The HTML template populated with the Comment's data
         """
         self._render_text = self.content.replace("\n", "<br>")
-        return render_str("comment.html", comment = self)
+        return render_str("comment.html", comment=self)
 
     @classmethod
     def by_post_id(cls, post_id):
@@ -114,7 +112,7 @@ class Comment(db.Model):
         """
         return cls.all().filter("post_id =", str(post_id)).order("-last_modified")
 
-def comments_key(group = "default"):
+def comments_key(group="default"):
     """Groups Comment entities under parent, "default"
 
     Args:

@@ -23,6 +23,7 @@ class User(db.Model):
     @classmethod
     def by_id(cls, uid):
         """Get User entity by ID
+
         Args:
             uid (integer): The user's ID
 
@@ -34,17 +35,19 @@ class User(db.Model):
     @classmethod
     def by_name(cls, username):
         """Get User entity by name
+
         Args:
             username (string): The user's username
 
         Returns:
             The user entity with the given username
         """
-        return cls.all().filter('username =', username).get()
+        return cls.all().filter("username =", username).get()
 
     @classmethod
     def register(cls, username, pw, email=None):
         """Hashes the password and creates a User entity
+
         Args:
             username (string): User's username
             pw (string): User's password
@@ -62,6 +65,7 @@ class User(db.Model):
     @classmethod
     def is_valid_login(cls, username, pw):
         """Check if user's username and password are valid
+
         Args:
             username (string): User's username
             pw (string): User's password
@@ -73,28 +77,31 @@ class User(db.Model):
         if u and is_valid_pw_login(username, pw, u.pw_hash):
             return u
 
-def users_key(group='default'):
-    """Groups user entities under parent, 'default'
+def users_key(group="default"):
+    """Groups User entities under parent, "default"
+
     Args:
         group (string): The parent
 
     Returns:
         The key for data model User
     """
-    return db.Key.from_path('users', group)
+    return db.Key.from_path("users", group)
 
 def make_salt(length=5):
     """Creates a salt for password hashing
+
     Args:
         length (integer): The length of the salt
 
     Returns:
         The salt of the given length
     """
-    return ''.join(random.choice(string.letters) for x in xrange(length))
+    return "".join(random.choice(string.letters) for x in xrange(length))
 
 def make_pw_hash(name, pw, salt=None):
     """Creates a password hash
+
     Args:
         name (string): The user's name
         pw (string): The password
@@ -107,10 +114,11 @@ def make_pw_hash(name, pw, salt=None):
         # don't create a new salt if one already exists
         salt = make_salt()
     h = hashlib.sha256(name + pw + salt).hexdigest()
-    return '%s,%s' % (h, salt)
+    return "%s,%s" % (h, salt)
 
 def is_valid_pw_login(name, pw, h):
     """Checks if the given password is valid for login
+
     Args:
         name (string): The user's name
         pw (string): The password
@@ -126,6 +134,7 @@ def is_valid_pw_login(name, pw, h):
 USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
 def is_valid_username(username):
     """Checks if the username is valid using reg-ex
+
     Args:
         username (string): The user's name
 
@@ -138,6 +147,7 @@ def is_valid_username(username):
 PASS_RE = re.compile(r"^.{3,20}$")
 def is_valid_password(password):
     """Checks if the password is valid using reg-ex
+
     Args:
         password (string): The user's password
 
@@ -147,9 +157,10 @@ def is_valid_password(password):
     return password and PASS_RE.match(password)
 
 # valid email reg-ex
-EMAIL_RE = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
+EMAIL_RE = re.compile(r"^[\S]+@[\S]+\.[\S]+$")
 def is_valid_email(email):
     """Checks if the email is valid using reg-ex
+
     Args:
         email (string): The user's email
 

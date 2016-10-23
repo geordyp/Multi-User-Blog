@@ -1,161 +1,15 @@
-import os
-import re
-import string
-import random
-import jinja2
 import webapp2
-import hashlib
-import hmac
 
-from google.appengine.ext import db
-
-template_dir = os.path.join(os.path.dirname(__file__), "html")
-jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape = True)
-
-secret = 'iliketurtles'
-
-#########################
-# user sign up validation
-#########################
-USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
-def valid_username(username):
-    return username and USER_RE.match(username)
-
-def usernameIsTaken(username):
-    users = db.GqlQuery("SELECT * FROM User")
-    for u in users:
-        if u.username == username:
-            return True
-    return False
-
-PASS_RE = re.compile(r"^.{3,20}$")
-def valid_password(password):
-    return password and PASS_RE.match(password)
-
-EMAIL_RE  = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
-def valid_email(email):
-    return not email or EMAIL_RE.match(email)
-
-def blog_key(name = 'default'):
-    return db.Key.from_path('blogs', name)
-
-def users_key(group = 'default'):
-    return db.Key.from_path('users', group)
-
-def likes_key(group = 'default'):
-    return db.Key.from_path('likes', group)
-
-def comments_key(group = 'default'):
-    return db.Key.from_path('comments', group)
-
-class User(db.Model):
-    username = db.StringProperty(required = True)
-    password = db.StringProperty(required = True)
-    email = db.StringProperty(required = False)
-
-    @classmethod
-    def by_id(cls, uid):
-        return cls.get_by_id(uid, parent = users_key())
-
-    @classmethod
-    def by_name(cls, name):
-        u = cls.all().filter('username =', name).get()
-        return u
-
-    @classmethod
-    def register(cls, username, password, email = None):
-        pw_hash = make_pw_hash(username, password)
-        return cls(parent = users_key(),
-                    username = username,
-                    password = pw_hash,
-                    email = email)
-
-    @classmethod
-    def login(cls, username, password):
-        u = cls.by_name(username)
-        if u and valid_pw(username, password, u.password):
-            return u
-
-class Post(db.Model):
-    subject = db.StringProperty(required = True)
-    content = db.TextProperty(required = True)
-    created = db.DateTimeProperty(auto_now_add = True)
-    last_modified = db.DateTimeProperty(auto_now = True)
-    created_by = db.StringProperty(required = True)
-
-    def render_str(self, template, **params):
-        t = jinja_env.get_template(template)
-        return t.render(params)
-
-    def render(self):
-        self._render_text = self.content.replace('\n', '<br>')
-        return self.render_str("post.html", p = self)
-
-class UserLike(db.Model):
-    post_id = db.StringProperty(required = True)
-    username = db.StringProperty(required = True)
-
-    @classmethod
-    def getLikeByPost(cls, post_id, username):
-        likes = db.GqlQuery("SELECT * FROM UserLike WHERE post_id = :1", str(post_id))
-        if likes:
-            for like in likes:
-                if like.username == username:
-                    return like
-
-class Comment(db.Model):
-    content = db.TextProperty(required = True)
-    post_id = db.StringProperty(required = True)
-    created_by = db.StringProperty(required = True)
-    created = db.DateTimeProperty(auto_now_add = True)
-    last_modified = db.DateTimeProperty(auto_now = True)
-
-    def render_str(self, template, **params):
-        t = jinja_env.get_template(template)
-        return t.render(params)
-
-    def render(self):
-        self._render_text = self.content.replace('\n', '<br>')
-        return self.render_str("comment.html", c = self)
-
-    @classmethod
-    def getPostComments(cls, post_id):
-        return db.GqlQuery("SELECT * FROM Comment WHERE post_id = :1 ORDER BY last_modified DESC LIMIT 10", str(post_id))
-
-#########################
-# password hashing
-#########################
-def make_salt(length = 5):
-    return ''.join(random.choice(string.letters) for x in xrange(length))
-
-def make_pw_hash(name, pw, salt = None):
-    if not salt:
-        salt = make_salt()
-
-    h = hashlib.sha256(name + pw + salt).hexdigest()
-    return '%s,%s' % (h, salt)
-
-def valid_pw(name, pw, h):
-    salt = h.split(",")[1]
-    return h == make_pw_hash(name, pw, salt)
-
-#########################
-# cookies
-#########################
-def make_secure_val(val):
-    return "%s|%s" % (val, hmac.new(secret, val).hexdigest())
-
-def check_secure_val(secure_val):
-    val = secure_val.split("|")[0]
-    if secure_val == make_secure_val(val):
-        return val
+from user import *
+from post import *
+from util import *
 
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
 
     def render_str(self, template, **params):
-        t = jinja_env.get_template(template)
+        t = JINJA_ENV.get_template(template)
         return t.render(params)
 
     def render(self, template, **kw):
@@ -198,7 +52,7 @@ class PostPageHandler(Handler):
 
         msg = None
         liked = False
-        if self.user and UserLike.getLikeByPost(str(post_id), str(self.user.username)):
+        if self.user and UserLike.by_post_id_username(str(post_id), str(self.user.username)):
             liked = True
 
         comments = Comment.all().filter("post_id =", str(post_id)).order("-last_modified")
@@ -238,7 +92,7 @@ class UserLoginHandler(Handler):
         username = self.request.get("username")
         password = self.request.get("password")
 
-        u = User.login(str(username), str(password))
+        u = User.is_valid_login(str(username), str(password))
         if u:
             self.login(u)
             self.redirect('/blog/welcome')
@@ -259,21 +113,24 @@ class UserSignUpHandler(Handler):
 
         params = dict(username = username, email = email)
 
-        if not valid_username(username):
+        if not is_valid_username(username):
             params['error_username'] = "That's not a valid username."
             have_error = True
-        elif usernameIsTaken(username):
+        # elif usernameIsTaken(username):
+        #     params['error_username'] = "This user name is taken."
+        #     have_error = True
+        elif User.by_name(username):
             params['error_username'] = "This user name is taken."
             have_error = True
 
-        if not valid_password(password):
+        if not is_valid_password(password):
             params['error_password'] = "That wasn't a valid password."
             have_error = True
         elif password != verify:
             params['error_verify'] = "Your passwords didn't match."
             have_error = True
 
-        if not valid_email(email):
+        if not is_valid_email(email):
             params['error_email'] = "That's not a valid email."
             have_error = True
 
@@ -296,7 +153,7 @@ class WelcomeHandler(Handler):
         u_id = self.read_secure_cookie("user_id")
         if u_id:
             user = User.by_id(int(u_id))
-            if user and valid_username(str(user.username)):
+            if user and is_valid_username(str(user.username)):
                 self.render("welcome.html", username = str(user.username), user=self.user)
             else:
                 self.redirect("/blog")
@@ -316,10 +173,10 @@ class LikeHandler(Handler):
         if not self.user:
             msg = "You need to login to like this post."
         else:
-            if post.created_by.username == self.user.username:
+            if post.created_by == self.user.username:
                 msg = "You can't like your own post."
             else:
-                like = UserLike.getLikeByPost(post_id, self.user.username)
+                like = UserLike.by_post_id_username(post_id, self.user.username)
                 if like:
                     like.delete()
                     liked = False
@@ -333,7 +190,7 @@ class LikeHandler(Handler):
                     post_id=post_id,
                     liked=liked,
                     error=msg,
-                    comments=Comment.getPostComments(post_id),
+                    comments=Comment.by_post_id(post_id),
                     user=self.user)
 
 class DeleteHandler(Handler):
@@ -349,7 +206,7 @@ class DeleteHandler(Handler):
                         post_id=post_id,
                         liked=None,
                         error=msg,
-                        comments=Comment.getPostComments(post_id),
+                        comments=Comment.by_post_id(post_id),
                         user=self.user)
         else:
             if post.created_by.username == self.user.username:
@@ -359,7 +216,7 @@ class DeleteHandler(Handler):
             else:
                 msg = "You didn't create this post. You can't delete it."
                 liked = False
-                if UserLike.getLikeByPost(post_id, self.user.username):
+                if UserLike.by_post_id_username(post_id, self.user.username):
                     liked = True
 
                 self.render("permalink.html",
@@ -367,7 +224,7 @@ class DeleteHandler(Handler):
                             post_id=post_id,
                             liked=liked,
                             error=msg,
-                            comments=Comment.getPostComments(post_id),
+                            comments=Comment.by_post_id(post_id),
                             user=self.user)
 
 class EditHandler(Handler):
@@ -385,7 +242,7 @@ class EditHandler(Handler):
                         post_id=post_id,
                         liked=None,
                         error=msg,
-                        comments=Comment.getPostComments(post_id),
+                        comments=Comment.by_post_id(post_id),
                         user=self.user)
         else:
             if post.created_by.username == self.user.username:
@@ -394,7 +251,7 @@ class EditHandler(Handler):
                 msg = "You didn't create this post. You can't edit it."
 
             liked = False
-            if self.user and UserLike.getLikeByPost(post_id, self.user.username):
+            if self.user and UserLike.by_post_id_username(post_id, self.user.username):
                 liked = True
 
             self.render("permalink.html",
@@ -402,7 +259,7 @@ class EditHandler(Handler):
                         post_id=post_id,
                         liked=liked,
                         error=msg,
-                        comments=Comment.getPostComments(post_id),
+                        comments=Comment.by_post_id(post_id),
                         user=self.user)
 
     def post(self):
@@ -441,7 +298,7 @@ class NewCommentHandler(Handler):
         else:
             error = "there's no comment"
             liked = False
-            if UserLike.getLikeByPost(post_id, self.user.username):
+            if UserLike.by_post_id_username(post_id, self.user.username):
                 liked = True
 
             self.render("permalink.html",
@@ -449,7 +306,7 @@ class NewCommentHandler(Handler):
                         post_id=post_id,
                         error=msg,
                         liked=liked,
-                        comments=Comment.getPostComments(post_id),
+                        comments=Comment.by_post_id(post_id),
                         error_comment=error,
                         user=self.user)
 
@@ -499,7 +356,7 @@ class DeleteCommentHandler(Handler):
                         post_id=post_id,
                         liked=None,
                         error=msg,
-                        comments=Comment.getPostComments(post_id),
+                        comments=Comment.by_post_id(post_id),
                         user=self.user)
         else:
             if c.created_by == self.user.username:
@@ -509,7 +366,7 @@ class DeleteCommentHandler(Handler):
             else:
                 msg = "You didn't create this comment. You can't delete it."
                 liked = False
-                if UserLike.getLikeByPost(post_id, self.user.username):
+                if UserLike.by_post_id_username(post_id, self.user.username):
                     liked = True
 
                 self.render("permalink.html",
@@ -517,7 +374,7 @@ class DeleteCommentHandler(Handler):
                             post_id=post_id,
                             liked=liked,
                             error=msg,
-                            comments=Comment.getPostComments(post_id),
+                            comments=Comment.by_post_id(post_id),
                             user=self.user)
 
 app = webapp2.WSGIApplication([
