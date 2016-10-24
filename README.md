@@ -10,7 +10,7 @@ Created this as part of my Udacity Full Stack Web
 Development Nanodegree.
 
 ## Deployed App
-[Blog is available here](http://geordy-146823.appspot.com/blog)
+[Blog is available here](http://geordy-146823.appspot.com)
 
 ## Setup
 1. Clone this repo onto your machine
