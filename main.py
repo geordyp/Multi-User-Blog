@@ -109,7 +109,7 @@ class Login(BlogHandler):
         u = User.is_valid_login(str(username), str(password))
         if u:
             self.login(u)
-            self.redirect("/blog")
+            self.redirect("/")
         else:
             error = "Invalid login. Please try again."
             self.render("login.html", error=error, user=self.user)
@@ -397,7 +397,7 @@ class EditComment(BlogHandler):
                         error_comment=msg,
                         user=self.user)
 
-app = webapp2.WSGIApplication([("/blog/?", FrontPage),
+app = webapp2.WSGIApplication([("/", FrontPage),
                                ("/blog/signup", SignUp),
                                ("/blog/welcome", Welcome),
                                ("/blog/login", Login),
