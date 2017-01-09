@@ -11,5 +11,5 @@ A blog web application using Google App Engine. Users are able to login and crea
 4. Run the application locally using `dev_appserver.py [project_dir]`.
 5. Deploy to Google App Engine using `gcloud app deploy`.
 
-## Authors
+## Author
 Geordy Williams
