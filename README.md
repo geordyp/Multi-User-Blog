@@ -1,8 +1,8 @@
-# Multi_User_Blog
+# Multi User Blog
 A blog web application using Google App Engine. Users are able to login and create, edit and delete blog posts.
 
-## Deployed App
-[Blog is available here](http://geordy-146823.appspot.com)
+## View Project
+[http://geordy-146823.appspot.com](http://geordy-146823.appspot.com)
 
 ## Setup
 1. Clone this repo onto your machine.
